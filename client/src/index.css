@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #4A7459;
+  --color-cream: #F7F3EB;
+  --color-antracita: #2D362F;
+  --color-neutral-grey: #6B6B6B;
+
+  --font-serif: "Libre Caslon Text", Georgia, serif;
+  --font-sans: "Hanken Grotesk", sans-serif;
+}
+
+body {
+  background-color: #F7F3EB;
+  /* theme(colors.cream) fallback */
+  color: #2D362F;
+  /* theme(colors.antracita) fallback */
+  font-family: "Hanken Grotesk", sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-title {
+  font-family: "Libre Caslon Text", Georgia, serif;
+}
