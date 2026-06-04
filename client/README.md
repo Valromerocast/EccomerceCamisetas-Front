@@ -1,16 +1,134 @@
-# React + Vite
+# Mundialista Store 🏆
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+E-commerce de camisetas de fútbol de selecciones nacionales. Proyecto frontend desarrollado con **React + Vite + Tailwind CSS**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ¿Cómo iniciar el proyecto?
 
-## React Compiler
+### Requisitos previos
+- Node.js instalado (versión 18 o superior)
+- npm
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Pasos
 
-## Expanding the ESLint configuration
+```bash
+# 1. Instalar las dependencias
+npm install
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+# 2. Iniciar el servidor de desarrollo
+npm run dev
+```
+
+La app queda disponible en `http://localhost:5173` (o el puerto que indique la terminal).
+
+---
+
+## Credenciales de prueba
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Admin | admin@tshirt.com | admin |
+| Usuario | test@tshirt.com | user |
+
+---
+
+## Estructura del proyecto
+
+```
+src/
+├── data/
+│   └── products.js       # Array con todos los productos del catálogo
+├── components/           # Componentes reutilizables
+│   ├── layout/           # Navbar, Footer, Layout principal
+│   ├── product/          # ProductCard, ProductGrid
+│   ├── cart/             # CartItem, CartSummary
+│   ├── checkout/         # CheckoutSummary, PaymentMethods
+│   ├── admin/            # AdminSidebar
+│   └── ui/               # Form (Input, Select, Button)
+├── views/                # Páginas de la aplicación
+│   ├── Home.jsx
+│   ├── Catalog.jsx
+│   ├── ProductDetail.jsx
+│   ├── Cart.jsx
+│   ├── Checkout.jsx
+│   ├── OrderSuccess.jsx
+│   ├── Login.jsx
+│   ├── Register.jsx
+│   ├── Profile.jsx
+│   ├── Contact.jsx
+│   └── admin/
+│       ├── AdminLayout.jsx
+│       ├── AdminSales.jsx
+│       ├── AdminInventory.jsx
+│       ├── AdminProductEdit.jsx
+│       ├── AdminOrderDetail.jsx
+│       └── AdminUserAdd.jsx
+├── App.jsx               # Estado global, rutas y lógica central
+├── main.jsx              # Punto de entrada de React
+└── index.css             # Estilos globales y tokens de Tailwind
+```
+
+---
+
+## Componentes principales
+
+### `App.jsx`
+Es el corazón de la app. Maneja el estado global con `useState`:
+- **products** → catálogo de camisetas
+- **cart** → artículos en el carrito
+- **user** → usuario logueado
+- **orders** → historial de órdenes
+
+Todo se persiste en `localStorage` con `useEffect` para que los datos no se pierdan al recargar.
+
+### `Layout.jsx` / `AdminLayout.jsx`
+Envuelven las vistas con `<Outlet>` de React Router. `Layout` agrega Navbar y Footer para las rutas públicas; `AdminLayout` pone el sidebar para las rutas `/admin/*`.
+
+### `Navbar.jsx`
+Barra de navegación fija. Incluye buscador (que filtra por URL), links a categorías, ícono de perfil y carrito con badge de cantidad. En mobile se colapsa en menú hamburguesa.
+
+### `ProductCard.jsx`
+Tarjeta de producto con selector de talle, botón de agregar al carrito y badges de stock. Los admins no ven los controles de compra.
+
+### `AdminSidebar.jsx`
+Panel lateral del administrador con navegación a Ventas, Inventario y Clientes.
+
+---
+
+## Rutas disponibles
+
+| Ruta | Vista |
+|---|---|
+| `/` | Home con productos destacados |
+| `/catalog` | Catálogo completo con filtros |
+| `/product/:id` | Detalle de producto |
+| `/cart` | Carrito de compras |
+| `/checkout` | Finalizar compra |
+| `/order-success` | Confirmación de compra |
+| `/login` | Iniciar sesión |
+| `/register` | Crear cuenta |
+| `/profile` | Perfil y pedidos del usuario |
+| `/contact` | Página de contacto |
+| `/admin/sales` | Panel admin → Ventas |
+| `/admin/inventory` | Panel admin → Inventario |
+| `/admin/users/add` | Panel admin → Agregar usuario |
+
+---
+
+## Reglas de negocio
+
+- Los **administradores no tienen carrito** y no pueden comprar.
+- Solo puede existir **un único admin** (no se pueden registrar más desde el formulario).
+- Si un usuario no está logueado e intenta agregar un producto al carrito, **se redirige al login**.
+- El stock se descuenta automáticamente al confirmar una compra.
+- Envío gratis.
+
+---
+
+## Tecnologías usadas
+
+- [React 18](https://react.dev/) — librería de UI con componentes y hooks
+- [Vite](https://vitejs.dev/) — bundler y servidor de desarrollo
+- [React Router DOM](https://reactrouter.com/) — navegación entre vistas (SPA)
+- [Tailwind CSS](https://tailwindcss.com/) — estilos utilitarios
