@@ -1,8 +1,50 @@
 # Arquitectura y Datos
 
-## Arquitectura sin backend
+## Arquitectura completa del sistema
 
-Este proyecto tiene una arquitectura **cliente únicamente** (client-only). No existe un servidor separado ni una API REST:
+El TPO está compuesto por dos aplicaciones separadas que se comunican entre sí:
+
+```
+┌──────────────────────┐        HTTP/REST + JWT       ┌────────────────────────────┐
+│   FRONTEND           │ ────────────────────────►   │   BACKEND                  │
+│   React + Vite       │ ◄────────────────────────   │   Spring Boot (Java)       │
+│   Puerto 5173        │       JSON responses         │   Puerto 8080              │
+└──────────────────────┘                             └────────────────┬───────────┘
+                                                                      │ JPA
+                                                                      ▼
+                                                     ┌────────────────────────────┐
+                                                     │   BASE DE DATOS            │
+                                                     │   H2 file-based            │
+                                                     │   ./data/marketplace       │
+                                                     └────────────────────────────┘
+```
+
+### Arquitectura de capas del backend (Spring Boot)
+
+Cada petición del frontend recorre estas capas:
+
+```
+Frontend (React)
+      │  HTTP Request
+      ▼
+Controller     ← recibe la petición y valida el JWT
+      │
+      ▼
+Service        ← lógica de negocio (validaciones, reglas)
+      │
+      ▼
+Repository     ← acceso a datos con Spring Data JPA
+      │
+      ▼
+Base de Datos  ← H2 persiste los cambios
+      │
+      ▼ respuesta JSON
+Controller     → devuelve el DTO de respuesta al frontend
+```
+
+## Estado actual del frontend (modo standalone)
+
+El frontend todavía **no está integrado con el backend**. Funciona de forma independiente usando `localStorage` del navegador como capa de datos temporal:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -10,16 +52,13 @@ Este proyecto tiene una arquitectura **cliente únicamente** (client-only). No e
 │                                                     │
 │   ┌──────────────────────────────────────────────┐  │
 │   │              React App (App.jsx)              │  │
-│   │                                              │  │
 │   │  Estado Global (useState)                    │  │
 │   │  ├── products[]                              │  │
 │   │  ├── cart[]                                  │  │
 │   │  ├── user {}                                 │  │
 │   │  ├── orders[]                                │  │
 │   │  └── usersList[]                             │  │
-│   │                                              │  │
-│   │  Funciones (props hacia abajo)               │  │
-│   │  addToCart / removeFromCart / login / ...    │  │
+│   │  Funciones: addToCart / login / placeOrder   │  │
 │   └──────────────────┬───────────────────────────┘  │
 │                      │ lee/escribe                   │
 │   ┌──────────────────▼───────────────────────────┐  │
@@ -31,7 +70,7 @@ Este proyecto tiene una arquitectura **cliente únicamente** (client-only). No e
 └─────────────────────────────────────────────────────┘
 ```
 
-**No hay petición de red.** Todo sucede dentro del mismo navegador.
+**No hay petición de red en el estado actual.** Todo sucede dentro del mismo navegador.
 
 ---
 
@@ -81,7 +120,23 @@ const [cart, setCart] = useState(() => {
 
 ## ¿Cómo se conecta el back con el front?
 
-**No hay conexión con un backend** porque el proyecto no tiene backend. Toda la lógica que normalmente viviría en un servidor (validar usuarios, gestionar stock, crear órdenes) está implementada en el frontend.
+El backend expone una **API REST** en el puerto 8080. Cuando estén integrados, el frontend enviará peticiones HTTP y el backend responderá con JSON. La autenticación se maneja con **JWT**: al hacer login, el backend devuelve un token que el frontend debe incluir en el header de cada petición protegida:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+### Equivalencia entre el estado actual y la integración futura
+
+| Acción | Frontend actual (localStorage) | Con backend integrado (HTTP) |
+|---|---|---|
+| Login | Busca en `usersList[]` en memoria | `POST /api/auth/login` → recibe JWT |
+| Ver productos | Lee `products[]` del estado | `GET /api/camisetas` |
+| Agregar al carrito | Modifica `cart[]` en memoria | `POST /api/carrito/items` |
+| Finalizar compra | Crea orden en `orders[]` | `POST /api/pedidos` |
+| Registrar usuario | Agrega a `usersList[]` | `POST /api/auth/register` |
+
+### Comunicación interna del frontend (estado actual)
 
 ### ¿Cómo se comunican los componentes entre sí?
 

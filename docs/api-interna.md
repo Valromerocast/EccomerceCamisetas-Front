@@ -4,7 +4,59 @@
 
 ## ¿Por qué llamarla "API interna"?
 
-En una aplicación con backend, el frontend consume una API REST haciendo peticiones HTTP. En este proyecto, como no hay backend, las funciones definidas en `App.jsx` cumplen exactamente ese rol: son el contrato entre los componentes y el estado de la aplicación. Se las llama "API interna" porque definen qué operaciones están disponibles, qué parámetros reciben y qué devuelven.
+El TPO tiene un backend real en Spring Boot que expone una API REST. Sin embargo, el frontend actualmente opera en **modo standalone** (sin conexión al backend), usando funciones JavaScript en `App.jsx` como capa de datos temporal.
+
+Se las llama "API interna" porque cumplen exactamente el mismo rol que los endpoints del backend: definen qué operaciones están disponibles, qué parámetros reciben y qué devuelven. Cuando se realice la integración, estas funciones serán reemplazadas por llamadas HTTP reales.
+
+---
+
+## Seguridad en el backend — JWT (JSON Web Token)
+
+El backend implementa autenticación con JWT. Es importante entender cómo funciona para la integración futura:
+
+### ¿Qué es un JWT?
+
+Es un token (cadena de texto codificada) que el backend genera al hacer login. Contiene información del usuario (email, rol) firmada digitalmente para que no pueda ser falsificada.
+
+```
+eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c3VhcmlvQGVtYWlsLmNvbSIsInJvbCI6IlVTRVIifQ.firma
+     HEADER                          PAYLOAD                              SIGNATURE
+```
+
+### Flujo de autenticación con JWT (backend)
+
+```
+1. Frontend envía: POST /api/auth/login  { email, password }
+        │
+        ▼
+2. Backend valida credenciales contra la base de datos H2
+        │
+        ▼
+3. Backend genera y devuelve: { token: "eyJ..." }
+        │
+        ▼
+4. Frontend guarda el token (localStorage o memoria)
+        │
+        ▼
+5. En cada petición protegida, frontend envía el header:
+   Authorization: Bearer eyJ...
+        │
+        ▼
+6. JwtAuthenticationFilter del backend intercepta la petición,
+   valida el token y carga el usuario en el contexto de seguridad
+        │
+        ▼
+7. Si el token es válido → procesa la petición
+   Si no → devuelve 401 Unauthorized
+```
+
+### Roles y permisos del backend
+
+| Rol | Acceso |
+|---|---|
+| **PÚBLICO** | Login, registro, leer catálogo de camisetas |
+| **USER** | Todo lo anterior + carrito y checkout |
+| **ADMIN** | Todo lo anterior + gestión de camisetas, stock, descuentos y usuarios |
 
 ---
 

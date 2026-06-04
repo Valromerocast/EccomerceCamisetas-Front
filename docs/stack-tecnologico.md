@@ -34,14 +34,37 @@ El frontend fue desarrollado con las siguientes tecnologías:
 
 ## ¿Hay un backend?
 
-**No.** Este proyecto es 100% frontend. No hay un servidor, no hay una base de datos real, y no hay peticiones HTTP a ninguna API externa.
+**Sí.** El TPO tiene un backend completo desarrollado con **Spring Boot** (Java), con base de datos **H2** y autenticación mediante **JWT (JSON Web Token)**.
 
-Toda la lógica de negocio (usuarios, productos, carrito, órdenes) vive dentro de la misma aplicación React y se persiste en el **`localStorage`** del navegador.
+| Tecnología | Rol |
+|---|---|
+| **Spring Boot** | Framework del servidor REST |
+| **H2 (file-based)** | Base de datos embebida (`jdbc:h2:file:./data/marketplace`) |
+| **Spring Data JPA** | Acceso a datos y persistencia |
+| **JWT** | Autenticación stateless con tokens |
+| **Springdoc / Swagger** | Documentación interactiva de la API |
 
-Esto significa que:
-- Los datos son **locales al dispositivo** del usuario.
-- Si se usa otro navegador o se borra el caché, los datos desaparecen.
-- Es una arquitectura válida para un **prototipo o proyecto académico**, pero no para producción.
+### Stack completo del proyecto
+
+```
+┌─────────────────────┐        HTTP/REST        ┌──────────────────────┐
+│   Frontend          │ ──────────────────────► │   Backend            │
+│   React + Vite      │ ◄────────────────────── │   Spring Boot (Java) │
+│   Tailwind CSS      │      JSON responses      │   Puerto 8080        │
+└─────────────────────┘                         └──────────┬───────────┘
+                                                           │
+                                                           ▼
+                                                ┌──────────────────────┐
+                                                │   Base de Datos      │
+                                                │   H2 (archivo local) │
+                                                └──────────────────────┘
+```
+
+### Estado actual del frontend
+
+El frontend actualmente opera en **modo standalone**: usa `localStorage` del navegador como capa de datos temporal, sin conectarse al backend. Esto permite desarrollar y demostrar la interfaz de forma independiente mientras se define la integración.
+
+Cuando se integren ambas capas, las funciones internas de `App.jsx` (`addToCart`, `login`, `placeOrder`, etc.) serán reemplazadas por llamadas HTTP a los endpoints reales del backend.
 
 ---
 
@@ -54,17 +77,25 @@ Es un contrato que define cómo dos sistemas de software pueden comunicarse entr
 - **Cómo pedirlo** (formato de los parámetros)
 - **Qué se va a recibir** como respuesta
 
-### Ejemplo de una API REST (tipo que usaría este proyecto en producción)
+### Los endpoints reales del backend (Spring Boot)
 
 ```
-GET  /api/products          → devuelve la lista de productos
-GET  /api/products/:id      → devuelve un producto específico
-POST /api/cart/add          → agrega un ítem al carrito
-POST /api/orders            → crea una nueva orden
-POST /api/auth/login        → autentica a un usuario
+POST /api/auth/login                  → autentica un usuario, devuelve JWT
+POST /api/auth/register               → registra un nuevo usuario
+GET  /api/catalogo/paises             → lista de países disponibles
+POST /api/camisetas                   → crea una camiseta (ADMIN)
+POST /api/camisetas/{id}/variantes    → agrega variante de talle/color
+POST /api/carrito/items               → agrega ítem al carrito
+POST /api/pedidos                     → crea un pedido (checkout)
+GET  /api/usuarios/me                 → datos del usuario autenticado
 ```
 
-En este proyecto no se consume ninguna API externa. En cambio, se construyó una **"API interna"**: un conjunto de funciones JavaScript que viven en `App.jsx` y se pasan a los componentes como `props`. Cada función cumple el mismo rol que un endpoint de una API real:
+La documentación interactiva completa del backend está disponible en Swagger:
+`http://localhost:8080/swagger-ui/index.html` (con el backend corriendo)
+
+### La "API interna" del frontend actual
+
+Mientras el frontend opera en modo standalone, se construyó una **"API interna"**: funciones JavaScript en `App.jsx` que cumplen el mismo rol que los endpoints del backend. Cada una tiene su equivalente real:
 
 | Función interna | Equivalente en API REST |
 |---|---|
