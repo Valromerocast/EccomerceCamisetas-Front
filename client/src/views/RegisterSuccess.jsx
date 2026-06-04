@@ -22,11 +22,7 @@ function RegisterSuccess() {
           
           {/* Visual confirmation badge */}
           <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-white/90 backdrop-blur-sm border border-neutral-200 text-antracita flex items-center space-x-3.5 shadow-md">
-            <div className="bg-emerald-500 text-white p-1 rounded-full">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
+            <img src="/assets/Background (1).svg" alt="Check" className="w-9 h-9 object-contain" />
             <div>
               <p className="text-sm font-bold font-title">¡Ya eres parte!</p>
               <p className="text-[10px] text-neutral-500">Tu pasaje al fútbol está listo.</p>
@@ -66,7 +62,7 @@ function RegisterSuccess() {
 
           <div className="border-t border-neutral-100 pt-4 text-center">
             <p className="text-xs text-neutral-500 font-semibold flex items-center justify-center space-x-1.5">
-              <span>🚚</span>
+              <img src="/assets/Icon (3).svg" alt="Envío" className="w-4 h-4 object-contain inline-block" />
               <span>Envío gratuito en tu primera compra premium.</span>
             </p>
           </div>

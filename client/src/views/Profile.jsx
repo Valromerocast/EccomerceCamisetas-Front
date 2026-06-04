@@ -120,12 +120,12 @@ function Profile({ user, logout, orders = [] }) {
                     </span>
                   </div>
 
-                  {/* Lista de artículos del pedido con nombre, talle, color y precio */}
+                  {/* Lista de artículos del pedido con nombre, talle y precio */}
                   <div className="border-t border-b border-neutral-100 py-3 text-xs space-y-1.5 text-neutral-500">
                     {order.items.map((item) => (
                       <div key={item.cartKey} className="flex justify-between">
                         <span>
-                          {item.product.name} ({item.size} - {item.color}) <strong className="text-neutral-450">x{item.quantity}</strong>
+                          {item.product.name} ({item.size}) <strong className="text-neutral-450">x{item.quantity}</strong>
                         </span>
                         <span className="text-antracita font-semibold">${(item.product.price * item.quantity).toFixed(2)}</span>
                       </div>

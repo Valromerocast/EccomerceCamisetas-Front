@@ -8,14 +8,14 @@ function CartSummary({ cart }) {
   // Sumo el precio × cantidad de todos los ítems del carrito
   const subtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
 
-  // Umbral para envío gratis
-  const shippingThreshold = 60;
+  // El envío siempre es gratis en todas las compras
+  const shippingCost = 0;
 
-  // Si el subtotal supera el umbral (o el carrito está vacío) el envío es gratis
-  const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 5.00;
+  // Impuestos del 8%
+  const taxes = subtotal * 0.08;
 
-  // Total final = subtotal + envío (impuestos siempre en $0 en este proyecto)
-  const total = subtotal + shippingCost;
+  // Total final = subtotal + envío + impuestos
+  const total = subtotal + shippingCost + taxes;
 
   return (
     <section className="bg-white border border-neutral-200 rounded-xl p-6 space-y-6 shadow-sm text-antracita">
@@ -29,25 +29,12 @@ function CartSummary({ cart }) {
         </div>
         <div className="flex justify-between">
           <span>Envío</span>
-          <span className="text-antracita font-bold">
-            {shippingCost === 0 ? (
-              <span className="text-emerald-600 font-bold">Gratis</span>
-            ) : (
-              `$${shippingCost.toFixed(2)}`
-            )}
-          </span>
+          <span className="text-emerald-600 font-bold">Gratis</span>
         </div>
         <div className="flex justify-between">
-          <span>Impuestos</span>
-          <span className="text-antracita font-bold">$0.00</span>
+          <span>Impuestos (8%)</span>
+          <span className="text-antracita font-bold">${taxes.toFixed(2)}</span>
         </div>
-
-        {/* Aviso de cuánto falta para llegar al envío gratis — solo cuando aplica costo */}
-        {shippingCost > 0 && (
-          <div className="text-[10px] text-neutral-500 font-semibold leading-normal bg-cream p-2.5 rounded-lg border border-neutral-200">
-            ¡Agrega <strong className="text-primary font-bold">${(shippingThreshold - subtotal).toFixed(2)}</strong> más para obtener <strong>Envío Gratis</strong>!
-          </div>
-        )}
       </div>
 
       <hr className="border-neutral-100" />

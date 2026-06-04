@@ -13,9 +13,8 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
   // Busco el producto a editar por su ID (solo aplica en modo edición)
   const productToEdit = products.find((p) => p.id === parseInt(id, 10));
 
-  // Listas de opciones disponibles para talles, colores y categorías
+  // Listas de opciones disponibles para talles y categorías
   const availableSizes = ["S", "M", "L", "XL", "XXL"];
-  const availableColors = ["Celeste", "Blanco", "Azul", "Rojo", "Amarillo", "Verde", "Rosa", "Violeta", "Negro"];
   const categoryOptions = [
     { value: 'Titulares', label: 'Camisetas Titulares' },
     { value: 'Suplentes', label: 'Camisetas Suplentes' }
@@ -24,31 +23,63 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
   // Estado del formulario — campos vacíos por defecto para el modo creación
   const [formData, setFormData] = useState({
     name: '',
+    subtitle: '',      // Selección o Equipo
     price: '',
     description: '',
     category: 'Titulares',
-    sizes: [],     // array de talles seleccionados (checkboxes)
-    colors: [],    // array de colores seleccionados (checkboxes)
     image: '',
-    stock: '',
+    stock: {           // Stock por talle inicializado vacío
+      S: '',
+      M: '',
+      L: '',
+      XL: '',
+      XXL: ''
+    },
     featured: false
   });
 
   // Mensaje de error de validación del formulario
   const [error, setError] = useState('');
 
+  // Auxiliar para convertir stock heredado (número) a stock por talle
+  const getStockBreakdown = (stock) => {
+    if (typeof stock === 'number') {
+      const base = Math.floor(stock / 5);
+      return {
+        S: base + (stock % 5 >= 1 ? 1 : 0),
+        M: base + (stock % 5 >= 2 ? 1 : 0),
+        L: base + (stock % 5 >= 3 ? 1 : 0),
+        XL: base + (stock % 5 >= 4 ? 1 : 0),
+        XXL: base
+      };
+    }
+    return stock || {};
+  };
+
+  // Obtiene la lista única de selecciones/equipos cargados para el datalist
+  const loadedSubtitles = [...new Set(products.map(p => p.subtitle).filter(Boolean))];
+
   // Si estamos en modo edición y el producto existe, cargo sus datos en el formulario
   useEffect(() => {
     if (isEditMode && productToEdit) {
+      const stockObj = typeof productToEdit.stock === 'object' && productToEdit.stock !== null
+        ? productToEdit.stock
+        : getStockBreakdown(productToEdit.stock);
+
       setFormData({
         name: productToEdit.name,
+        subtitle: productToEdit.subtitle || '',
         price: productToEdit.price.toString(),
         description: productToEdit.description,
         category: productToEdit.category,
-        sizes: productToEdit.sizes || [],
-        colors: productToEdit.colors || [],
         image: productToEdit.image,
-        stock: productToEdit.stock.toString(),
+        stock: {
+          S: stockObj.S !== undefined ? stockObj.S.toString() : '',
+          M: stockObj.M !== undefined ? stockObj.M.toString() : '',
+          L: stockObj.L !== undefined ? stockObj.L.toString() : '',
+          XL: stockObj.XL !== undefined ? stockObj.XL.toString() : '',
+          XXL: stockObj.XXL !== undefined ? stockObj.XXL.toString() : '',
+        },
         featured: productToEdit.featured || false
       });
     }
@@ -63,16 +94,17 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
     }));
   };
 
-  // Handler para los checkboxes de listas (talles y colores)
-  // Si el valor ya está en la lista lo quita; si no, lo agrega
-  const handleCheckboxListChange = (type, value) => {
-    setFormData((prev) => {
-      const currentList = prev[type];
-      const newList = currentList.includes(value)
-        ? currentList.filter((item) => item !== value)  // quitar
-        : [...currentList, value];                       // agregar
-      return { ...prev, [type]: newList };
-    });
+
+
+  // Handler para cambiar el stock de un talle individual
+  const handleStockSizeChange = (size, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      stock: {
+        ...prev.stock,
+        [size]: value === '' ? '' : Math.max(0, parseInt(value, 10) || 0)
+      }
+    }));
   };
 
   // Valida y envía el formulario para crear o actualizar el producto
@@ -81,28 +113,37 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
     setError('');
 
     // Todos los campos básicos son obligatorios
-    if (!formData.name || !formData.price || !formData.description || !formData.stock) {
+    if (!formData.name || !formData.price || !formData.description || !formData.subtitle) {
       setError('Por favor, completa todos los campos del producto.');
       return;
     }
 
-    // Al menos un talle debe estar seleccionado
-    if (formData.sizes.length === 0) {
-      setError('Debes seleccionar al menos un talle disponible.');
+    // Proceso las tallas y el stock ingresados
+    const stockPayload = {};
+    const sizesPayload = [];
+    availableSizes.forEach((size) => {
+      const val = formData.stock[size];
+      if (val !== undefined && val !== '') {
+        const qty = parseInt(val, 10) || 0;
+        stockPayload[size] = qty;
+        sizesPayload.push(size);
+      }
+    });
+
+    // Al menos un talle debe tener stock configurado
+    if (sizesPayload.length === 0) {
+      setError('Debes configurar la cantidad de stock para al menos un talle.');
       return;
     }
 
-    // Al menos un color debe estar seleccionado
-    if (formData.colors.length === 0) {
-      setError('Debes seleccionar al menos un color disponible.');
-      return;
-    }
 
-    // Preparo el payload con los tipos correctos (number en lugar de string)
+
+    // Preparo el payload final
     const payload = {
       ...formData,
       price: parseFloat(formData.price),
-      stock: parseInt(formData.stock, 10),
+      sizes: sizesPayload,
+      stock: stockPayload,
       image: formData.image || '/assets/success.svg'  // imagen por defecto si no se cargó
     };
 
@@ -156,7 +197,7 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
       <section className="bg-white border border-neutral-200 rounded-xl p-6 sm:p-8 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
 
-          {/* Campos básicos: nombre, categoría, precio y stock */}
+          {/* Campos básicos: nombre, categoría, precio y Selección/Equipo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Input
               label="Nombre del Producto"
@@ -185,16 +226,22 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
               placeholder="Ej: 89.99"
               required
             />
-            <Input
-              label="Stock de Unidades"
-              type="number"
-              min="0"
-              name="stock"
-              value={formData.stock}
-              onChange={handleInputChange}
-              placeholder="Ej: 50"
-              required
-            />
+            <div className="relative w-full">
+              <Input
+                label="Selección o Equipo"
+                name="subtitle"
+                value={formData.subtitle}
+                onChange={handleInputChange}
+                placeholder="Ej: AFA — HOME KIT o Boca Juniors"
+                required
+                list="loaded-subtitles"
+              />
+              <datalist id="loaded-subtitles">
+                {loadedSubtitles.map((sub) => (
+                  <option key={sub} value={sub} />
+                ))}
+              </datalist>
+            </div>
           </div>
 
           {/* Descripción completa del producto */}
@@ -214,47 +261,27 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
             />
           </div>
 
-          {/* Checkboxes de talles disponibles */}
-          <div className="space-y-2">
+          {/* Sección de Cantidades por Talle */}
+          <div className="space-y-3 pb-2 border-b border-neutral-100">
             <span className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase block">Cantidades por Talle</span>
-            <div className="flex flex-wrap gap-4">
-              {availableSizes.map((size) => {
-                const isChecked = formData.sizes.includes(size);
-                return (
-                  <label key={size} className="flex items-center space-x-2 text-xs text-antracita font-semibold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => handleCheckboxListChange('sizes', size)}
-                      className="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4"
-                    />
-                    <span className="font-bold">{size}</span>
-                  </label>
-                );
-              })}
+            <div className="flex flex-row flex-wrap gap-4 items-center">
+              {availableSizes.map((size) => (
+                <div key={size} className="flex flex-col items-center space-y-1.5 w-20 text-center">
+                  <span className="text-xs font-semibold text-neutral-600 uppercase">{size}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="—"
+                    value={formData.stock[size]}
+                    onChange={(e) => handleStockSizeChange(size, e.target.value)}
+                    className="w-full bg-neutral-50/70 border border-neutral-250 text-antracita text-center text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary focus:bg-white transition-all font-semibold shadow-sm"
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Checkboxes de colores disponibles */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase block">Colores Disponibles</span>
-            <div className="flex flex-wrap gap-4">
-              {availableColors.map((color) => {
-                const isChecked = formData.colors.includes(color);
-                return (
-                  <label key={color} className="flex items-center space-x-2 text-xs text-antracita font-semibold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => handleCheckboxListChange('colors', color)}
-                      className="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4"
-                    />
-                    <span>{color}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
+
 
           {/* Campo para la ruta de imagen del producto (manual en este proyecto) */}
           <div className="grid grid-cols-1 gap-5">

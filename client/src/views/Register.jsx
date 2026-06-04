@@ -175,22 +175,7 @@ function Register({ registerUser }) {
             </div>
           </form>
 
-          {/* Divisor para opciones de registro social */}
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-neutral-200"></div>
-            <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-wider text-neutral-400">O continúa con</span>
-            <div className="flex-grow border-t border-neutral-200"></div>
-          </div>
 
-          {/* Botones de registro social (decorativos en este proyecto) */}
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" className="flex items-center justify-center space-x-2 py-2 px-4 border border-neutral-200 rounded-lg text-xs font-semibold text-antracita bg-white hover:bg-neutral-50 cursor-pointer">
-              <span>Google</span>
-            </button>
-            <button type="button" className="flex items-center justify-center space-x-2 py-2 px-4 border border-neutral-200 rounded-lg text-xs font-semibold text-antracita bg-white hover:bg-neutral-50 cursor-pointer">
-              <span>GitHub</span>
-            </button>
-          </div>
 
           {/* Link para ir al login si ya tiene cuenta */}
           <div className="text-center text-xs text-neutral-500">

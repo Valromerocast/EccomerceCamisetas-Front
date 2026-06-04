@@ -7,12 +7,11 @@ export const INITIAL_PRODUCTS = [
     description: "La clásica titular canarinha. Tejido transpirable premium con cuello polo y el escudo tradicional de las 5 estrellas.",
     category: "Titulares",
     sizes: ["S", "M", "L", "XL"],
-    colors: ["Amarillo", "Verde"],
     image: "/assets/shirt-white.svg",
     fallbackImage: "/assets/shirt-white.svg",
     rating: 4.9,
     reviewsCount: 310,
-    stock: 22,
+    stock: { S: 5, M: 7, L: 6, XL: 4, XXL: 0 },
     featured: true
   },
   {
@@ -23,12 +22,11 @@ export const INITIAL_PRODUCTS = [
     description: "Diseño Samurai Spirit en color azul oscuro con gráficos de llamas estilizadas en colaboración de diseño urbano.",
     category: "Suplentes",
     sizes: ["S", "M", "L", "XL"],
-    colors: ["Azul", "Negro"],
     image: "/assets/shirt-blue.svg",
     fallbackImage: "/assets/shirt-blue.svg",
     rating: 4.9,
     reviewsCount: 114,
-    stock: 6,
+    stock: { S: 1, M: 2, L: 2, XL: 1, XXL: 0 },
     featured: true
   },
   {
@@ -39,12 +37,11 @@ export const INITIAL_PRODUCTS = [
     description: "Diseño local de Inglaterra. Cuello retro con los tres leones bordados sobre tejido de alta tecnología.",
     category: "Titulares",
     sizes: ["S", "M", "L", "XL"],
-    colors: ["Rojo", "Blanco"],
     image: "/assets/shirt-black.svg",
     fallbackImage: "/assets/shirt-black.svg",
     rating: 4.7,
     reviewsCount: 112,
-    stock: 16,
+    stock: { S: 4, M: 4, L: 4, XL: 4, XXL: 0 },
     featured: true
   },
   {
@@ -55,12 +52,11 @@ export const INITIAL_PRODUCTS = [
     description: "La camiseta de los campeones del mundo. Bastones celestes y blancos tradicionales con el parche de campeón y las 3 estrellas doradas.",
     category: "Titulares",
     sizes: ["S", "M", "L", "XL"],
-    colors: ["Celeste", "Blanco"],
     image: "/assets/success.svg",
     fallbackImage: "/assets/success.svg",
     rating: 5.0,
     reviewsCount: 520,
-    stock: 12,
+    stock: { S: 3, M: 4, L: 3, XL: 2, XXL: 0 },
     featured: true
   },
   {
@@ -71,12 +67,11 @@ export const INITIAL_PRODUCTS = [
     description: "La alternativa de la selección francesa. Diseño elegante en color blanco con detalles tricolores minimalistas en mangas y cuello.",
     category: "Suplentes",
     sizes: ["S", "M", "L", "XL"],
-    colors: ["Blanco", "Azul"],
     image: "/assets/hero-left.svg",
     fallbackImage: "/assets/hero-left.svg",
     rating: 4.8,
     reviewsCount: 88,
-    stock: 8,
+    stock: { S: 2, M: 2, L: 2, XL: 2, XXL: 0 },
     featured: false
   },
   {
@@ -87,12 +82,11 @@ export const INITIAL_PRODUCTS = [
     description: "Equipación suplente de Alemania. Estética moderna e innovadora que combina tonos vibrantes inspirados en la nueva generación futbolística.",
     category: "Suplentes",
     sizes: ["S", "M", "L", "XL"],
-    colors: ["Negro", "Rosa"],
     image: "/assets/shirt-blue.svg",
     fallbackImage: "/assets/shirt-blue.svg",
     rating: 4.6,
     reviewsCount: 94,
-    stock: 14,
+    stock: { S: 3, M: 4, L: 4, XL: 3, XXL: 0 },
     featured: false
   }
 ];

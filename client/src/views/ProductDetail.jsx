@@ -14,16 +14,27 @@ function ProductDetail({ products = [], addToCart }) {
   const navigate = useNavigate();
   const product = products.find((p) => p.id === parseInt(id, 10));
 
-  // Estado local de las selecciones del usuario: talle, color y cantidad
+  // Estado local de las selecciones del usuario: talle y cantidad
   const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
+
+  // Calcular stock total y stock para el talle seleccionado
+  const totalStock = product
+    ? (typeof product.stock === 'object' && product.stock !== null
+      ? Object.values(product.stock).reduce((sum, qty) => sum + (parseInt(qty, 10) || 0), 0)
+      : parseInt(product.stock, 10) || 0)
+    : 0;
+
+  const currentSizeStock = product
+    ? (typeof product.stock === 'object' && product.stock !== null
+      ? (parseInt(product.stock[selectedSize], 10) || 0)
+      : parseInt(product.stock, 10) || 0)
+    : 0;
 
   // Cuando se carga el producto (o cambia), inicializo las selecciones con los primeros valores
   useEffect(() => {
     if (product) {
       setSelectedSize(product.sizes[0] || '');
-      setSelectedColor(product.colors[0] || '');
       setQuantity(1);
     }
   }, [product]);
@@ -41,12 +52,12 @@ function ProductDetail({ products = [], addToCart }) {
     );
   }
 
-  // Agrego el producto al carrito con la talla, color y cantidad seleccionados
+  // Agrego el producto al carrito con la talla y cantidad seleccionados
   const handleAddToCart = () => {
-    if (product.stock === 0) return;  // no hago nada si está agotado
-    const success = addToCart(product, quantity, selectedSize, selectedColor);
+    if (currentSizeStock === 0) return;  // no hago nada si está agotado
+    const success = addToCart(product, quantity, selectedSize);
     if (success) {
-      alert(`¡"${product.name}" (${selectedSize} - ${selectedColor}) agregada al carrito!`);
+      alert(`¡"${product.name}" (${selectedSize}) agregada al carrito!`);
     }
   };
 
@@ -86,7 +97,7 @@ function ProductDetail({ products = [], addToCart }) {
             onError={handleImageError}
           />
           {/* Badge de agotado sobre la imagen */}
-          {product.stock === 0 && (
+          {totalStock === 0 && (
             <span className="absolute top-4 left-4 bg-red-600 text-white text-xs uppercase font-bold tracking-wider px-3 py-1.5 rounded-lg shadow-md">
               Agotado
             </span>
@@ -128,11 +139,10 @@ function ProductDetail({ products = [], addToCart }) {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                      selectedSize === size
+                    className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${selectedSize === size
                         ? 'bg-primary border-primary text-white shadow-sm'   // talle activo
                         : 'bg-cream border-neutral-200 text-antracita hover:border-neutral-350'
-                    }`}
+                      }`}
                   >
                     {size}
                   </button>
@@ -140,25 +150,7 @@ function ProductDetail({ products = [], addToCart }) {
               </div>
             </div>
 
-            {/* Selector de color */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase block">Colores</span>
-              <div className="flex gap-2.5">
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`text-xs py-1.5 px-4 rounded-lg border transition-all cursor-pointer ${
-                      selectedColor === color
-                        ? 'bg-primary border-primary text-white shadow-sm'   // color activo
-                        : 'bg-cream border-neutral-200 text-antracita hover:border-neutral-350'
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             {/* Selector de cantidad y botón de compra — solo para usuarios normales, no para el admin */}
             {!isAdmin ? (
@@ -175,11 +167,10 @@ function ProductDetail({ products = [], addToCart }) {
                   <span className="text-antracita text-sm font-bold w-6 text-center">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}  // no permite superar el stock
-                    disabled={quantity >= product.stock}
-                    className={`text-neutral-500 hover:text-antracita text-lg font-bold w-6 text-center cursor-pointer ${
-                      quantity >= product.stock ? 'opacity-50' : ''
-                    }`}
+                    onClick={() => setQuantity((q) => Math.min(currentSizeStock, q + 1))}  // no permite superar el stock
+                    disabled={quantity >= currentSizeStock}
+                    className={`text-neutral-500 hover:text-antracita text-lg font-bold w-6 text-center cursor-pointer ${quantity >= currentSizeStock ? 'opacity-50' : ''
+                      }`}
                   >
                     +
                   </button>
@@ -189,14 +180,13 @@ function ProductDetail({ products = [], addToCart }) {
                 <div className="flex-grow">
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stock === 0}
-                    className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-6 rounded-lg shadow-md transition-all duration-200 cursor-pointer ${
-                      product.stock === 0
+                    disabled={currentSizeStock === 0}
+                    className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-6 rounded-lg shadow-md transition-all duration-200 cursor-pointer ${currentSizeStock === 0
                         ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none'
                         : 'bg-primary hover:bg-primary/95 text-white shadow-primary/10 hover:shadow-primary/20'
-                    }`}
+                      }`}
                   >
-                    {product.stock === 0 ? 'Agotado Temporalmente' : 'Agregar al Carrito'}
+                    {currentSizeStock === 0 ? 'Sin Stock en este Talle' : 'Agregar al Carrito'}
                   </button>
                 </div>
               </div>

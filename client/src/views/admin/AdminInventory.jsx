@@ -14,14 +14,25 @@ function AdminInventory({ products = [], deleteProduct }) {
   // Calcula una distribución aproximada del stock por talle a partir del stock total
   // Es una estimación visual porque el sistema maneja stock único (no por talle individual)
   const getStockBreakdown = (stock) => {
-    if (stock <= 0) return { S: 0, M: 0, L: 0, XL: 0 };
-    const base = Math.floor(stock / 4);  // reparto equitativo entre 4 talles
-    return {
-      S: base + (stock % 4 >= 1 ? 1 : 0),   // los sobrantes van al S
-      M: base + (stock % 4 >= 2 ? 1 : 0),   // segundo sobrante al M
-      L: base + (stock % 4 >= 3 ? 1 : 0),   // tercer sobrante al L
-      XL: base                                // XL solo el base
-    };
+    if (typeof stock === 'object' && stock !== null) {
+      return {
+        S: parseInt(stock.S, 10) || 0,
+        M: parseInt(stock.M, 10) || 0,
+        L: parseInt(stock.L, 10) || 0,
+        XL: parseInt(stock.XL, 10) || 0
+      };
+    }
+    if (typeof stock === 'number') {
+      if (stock <= 0) return { S: 0, M: 0, L: 0, XL: 0 };
+      const base = Math.floor(stock / 4);  // reparto equitativo entre 4 talles
+      return {
+        S: base + (stock % 4 >= 1 ? 1 : 0),   // los sobrantes van al S
+        M: base + (stock % 4 >= 2 ? 1 : 0),   // segundo sobrante al M
+        L: base + (stock % 4 >= 3 ? 1 : 0),   // tercer sobrante al L
+        XL: base                                // XL solo el base
+      };
+    }
+    return { S: 0, M: 0, L: 0, XL: 0 };
   };
 
   // Renderiza la cantidad del talle con colores según el nivel de stock

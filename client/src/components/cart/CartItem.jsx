@@ -6,7 +6,11 @@ import { Link } from 'react-router-dom';
 
 function CartItem({ item, updateCartQuantity, removeFromCart }) {
   // Desestructuro el ítem para acceder a sus partes fácilmente
-  const { cartKey, product, quantity, size, color } = item;
+  const { cartKey, product, quantity, size } = item;
+
+  const currentStock = typeof product.stock === 'object' && product.stock !== null
+    ? (parseInt(product.stock[size], 10) || 0)
+    : parseInt(product.stock, 10) || 0;
 
   // Si la imagen del producto no carga, muestro la imagen de fallback
   const handleImageError = (e) => {
@@ -21,20 +25,19 @@ function CartItem({ item, updateCartQuantity, removeFromCart }) {
         <div className="flex-shrink-0 w-20 h-24 bg-neutral-100 rounded-lg overflow-hidden border border-neutral-200">
           <img
             src={product.image}
-            alt={`Camiseta ${product.name} en talle ${size} y color ${color}`}
+            alt={`Camiseta ${product.name} en talle ${size}`}
             className="w-full h-full object-cover"
             onError={handleImageError}
           />
         </div>
 
-        {/* Datos del producto: nombre, talle, color y controles de cantidad */}
+        {/* Datos del producto: nombre, talle y controles de cantidad */}
         <div>
           <h3 className="text-sm font-bold text-antracita hover:text-primary transition-colors font-title">
             <Link to={`/product/${product.id}`}>{product.name}</Link>
           </h3>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500 font-semibold">
             <span>Talle: <strong className="text-antracita uppercase">{size}</strong></span>
-            <span>Color: <strong className="text-antracita">{color}</strong></span>
           </div>
 
           {/* Controles para aumentar o reducir la cantidad del ítem */}
@@ -52,10 +55,9 @@ function CartItem({ item, updateCartQuantity, removeFromCart }) {
             {/* Botón de sumar — se deshabilita cuando se alcanza el stock máximo */}
             <button
               onClick={() => updateCartQuantity(cartKey, quantity + 1)}
-              disabled={quantity >= product.stock}
-              className={`w-7 h-7 flex items-center justify-center rounded-md bg-cream border border-neutral-200 text-neutral-500 hover:text-antracita hover:border-neutral-350 transition-colors cursor-pointer font-bold shadow-sm ${
-                quantity >= product.stock ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              disabled={quantity >= currentStock}
+              className={`w-7 h-7 flex items-center justify-center rounded-md bg-cream border border-neutral-200 text-neutral-500 hover:text-antracita hover:border-neutral-350 transition-colors cursor-pointer font-bold shadow-sm ${quantity >= currentStock ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               aria-label={`Incrementar cantidad de ${product.name}`}
             >
               +

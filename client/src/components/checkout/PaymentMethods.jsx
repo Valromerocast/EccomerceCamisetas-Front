@@ -1,3 +1,6 @@
+// Selector de métodos de pago del checkout
+// Muestra los métodos disponibles (Mercado Pago, tarjeta, PayPal, transferencia) como botones seleccionables.
+// El método activo queda resaltado con borde verde y fondo suave.
 import React from 'react';
 
 function PaymentMethods({ selectedMethod, setSelectedMethod }) {
@@ -44,8 +47,9 @@ function PaymentMethods({ selectedMethod, setSelectedMethod }) {
   ];
 
   return (
-    <div className="space-y-4 text-antracita">
+    <section className="space-y-4 text-antracita">
       <h3 className="text-xs font-bold text-neutral-500 tracking-wider uppercase font-title">Método de Pago</h3>
+      {/* Lista de opciones de pago disponibles */}
       <div className="space-y-3">
         {methods.map((method) => {
           const isSelected = selectedMethod === method.id;
@@ -95,7 +99,7 @@ function PaymentMethods({ selectedMethod, setSelectedMethod }) {
         <span>🔒</span>
         <span>Tus datos están protegidos por encriptación SSL de 256 bits. Mundialista Store nunca almacena la información completa de tu tarjeta.</span>
       </p>
-    </div>
+    </section>
   );
 }
 

@@ -96,9 +96,9 @@ function Home({ products = [], addToCart }) {
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-antracita font-title">Envíos Gratis a partir de $60</h3>
+              <h3 className="text-sm font-bold text-antracita font-title">Envíos Gratis en todas tus compras</h3>
               <p className="text-xs text-antracita/65 mt-1.5 leading-relaxed">
-                Arma tu combo titular y suplente para superar los $60 y obtener envío totalmente gratuito.
+                El envío es totalmente gratuito en todas tus compras, sin mínimo de compra.
               </p>
             </div>
           </article>

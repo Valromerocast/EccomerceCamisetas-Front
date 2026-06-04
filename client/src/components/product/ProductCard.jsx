@@ -10,23 +10,32 @@ function ProductCard({ product, addToCart }) {
   const storedUser = localStorage.getItem('camisetas_user') ? JSON.parse(localStorage.getItem('camisetas_user')) : null;
   const isAdmin = storedUser && storedUser.role === 'admin';
 
-  // Color por defecto: tomo el primero de la lista (no se puede cambiar desde la card, solo desde el detalle)
-  const defaultColor = product.colors[0] || 'Negro';
-
   // Talle seleccionado: el usuario puede elegir antes de agregar al carrito desde la card
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] || 'M');
 
-  // Agrega 1 unidad del producto con el talle seleccionado y el color por defecto
+  // Calcular stock total sumando todos los talles (si es objeto) o usando el valor directo
+  const totalStock = typeof product.stock === 'object' && product.stock !== null
+    ? Object.values(product.stock).reduce((sum, qty) => sum + (parseInt(qty, 10) || 0), 0)
+    : parseInt(product.stock, 10) || 0;
+
+  // Agrega 1 unidad del producto con el talle seleccionado
   const handleQuickAdd = (e) => {
     e.preventDefault();       // evito que el link padre navegue
     e.stopPropagation();      // evito que el evento suba al contenedor
-    if (product.stock > 0) {
-      const success = addToCart(product, 1, selectedSize, defaultColor);
+    const sizeStock = typeof product.stock === 'object' && product.stock !== null
+      ? (parseInt(product.stock[selectedSize], 10) || 0)
+      : parseInt(product.stock, 10) || 0;
+
+    if (sizeStock > 0) {
+      const success = addToCart(product, 1, selectedSize);
       if (success) {
-        alert(`¡"${product.name}" (${selectedSize} - ${defaultColor}) agregada al carrito!`);
+        alert(`¡"${product.name}" (${selectedSize}) agregada al carrito!`);
       }
+    } else {
+      alert(`No hay stock disponible para el talle ${selectedSize}.`);
     }
   };
+
 
   // Si la imagen principal falla, muestro la imagen de fallback del producto o una genérica
   const handleImageError = (e) => {
@@ -47,16 +56,16 @@ function ProductCard({ product, addToCart }) {
         />
 
         {/* Badge de agotado: se muestra cuando el stock llega a 0 */}
-        {product.stock === 0 && (
+        {totalStock === 0 && (
           <span className="absolute top-3 left-3 bg-red-600 text-white text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">
             Agotado
           </span>
         )}
 
         {/* Badge de últimas unidades: aviso cuando quedan 10 o menos */}
-        {product.stock > 0 && product.stock <= 10 && (
+        {totalStock > 0 && totalStock <= 10 && (
           <span className="absolute top-3 left-3 bg-amber-600 text-white text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">
-            Últimas {product.stock}
+            Últimas {totalStock}
           </span>
         )}
 
@@ -99,11 +108,10 @@ function ProductCard({ product, addToCart }) {
                   e.stopPropagation();
                   setSelectedSize(size);   // actualizo el talle seleccionado
                 }}
-                className={`w-9 h-9 flex items-center justify-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                  selectedSize === size
+                className={`w-9 h-9 flex items-center justify-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${selectedSize === size
                     ? 'bg-[#325B42] border-[#325B42] text-white shadow-sm'   // talle activo
                     : 'bg-white border-neutral-200 text-antracita hover:border-neutral-350'
-                }`}
+                  }`}
               >
                 {size}
               </button>
@@ -115,14 +123,13 @@ function ProductCard({ product, addToCart }) {
         {!isAdmin && (
           <button
             onClick={handleQuickAdd}
-            disabled={product.stock === 0}
-            className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 mt-5 cursor-pointer ${
-              product.stock === 0
+            disabled={totalStock === 0}
+            className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 mt-5 cursor-pointer ${totalStock === 0
                 ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none'
                 : 'bg-[#325B42] hover:bg-[#284935] text-white hover:shadow-md'
-            }`}
+              }`}
           >
-            {product.stock === 0 ? 'Agotado' : 'AGREGAR AL CARRITO'}
+            {totalStock === 0 ? 'Agotado' : 'AGREGAR AL CARRITO'}
           </button>
         )}
       </div>

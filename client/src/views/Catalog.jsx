@@ -17,7 +17,6 @@ function Catalog({ products = [], addToCart }) {
     search: urlQuery,
     category: categoryParam,
     size: '',
-    color: '',
     sortBy: 'default'
   });
 
@@ -31,11 +30,10 @@ function Catalog({ products = [], addToCart }) {
     }));
   }, [urlQuery, categoryParam]);
 
-  // Extraigo los valores únicos de categoría, talles y colores de todos los productos
+  // Extraigo los valores únicos de categoría y talles de todos los productos
   // para armar los selectores dinámicamente (sin hardcodear las opciones)
   const categories = [...new Set(products.map((p) => p.category))];
   const sizes = [...new Set(products.flatMap((p) => p.sizes))];
-  const colors = [...new Set(products.flatMap((p) => p.colors))];
 
   // Aplico todos los filtros activos al array de productos
   const filteredProducts = products.filter((product) => {
@@ -51,10 +49,7 @@ function Catalog({ products = [], addToCart }) {
     // Coincidencia por talle seleccionado
     const matchesSize = !filters.size || product.sizes.includes(filters.size);
 
-    // Coincidencia por color seleccionado
-    const matchesColor = !filters.color || product.colors.includes(filters.color);
-
-    return matchesSearch && matchesCategory && matchesSize && matchesColor;
+    return matchesSearch && matchesCategory && matchesSize;
   });
 
   // Ordeno los productos filtrados según la opción seleccionada en el selector

@@ -1,10 +1,13 @@
+// Resumen del pedido dentro del checkout
+// Muestra la lista de artículos del carrito con precios, y el desglose de subtotal, envío, impuestos y total.
+// Se ubica en la columna derecha del formulario de checkout.
 import React from 'react';
 
 function CheckoutSummary({ cart }) {
   const subtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const shippingThreshold = 60;
-  const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 5.00;
-  const total = subtotal + shippingCost;
+  const shippingCost = 0;
+  const taxes = subtotal * 0.08;
+  const total = subtotal + shippingCost + taxes;
 
   const handleImageError = (e, item) => {
     e.target.src = item.product.fallbackImage || "/assets/success.svg";
@@ -28,7 +31,7 @@ function CheckoutSummary({ cart }) {
               <div>
                 <p className="font-bold text-antracita line-clamp-1 font-title">{item.product.name}</p>
                 <p className="text-neutral-500 mt-0.5 uppercase text-[10px] font-semibold">
-                  Talle: {item.size} | Color: {item.color} | Cant: {item.quantity}
+                  Talle: {item.size} | Cant: {item.quantity}
                 </p>
               </div>
             </div>
@@ -47,13 +50,11 @@ function CheckoutSummary({ cart }) {
         </div>
         <div className="flex justify-between">
           <span>Envío</span>
-          <span className="text-antracita font-bold">
-            {shippingCost === 0 ? <span className="text-emerald-605 font-bold">Gratis</span> : `$${shippingCost.toFixed(2)}`}
-          </span>
+          <span className="text-emerald-600 font-bold">Gratis</span>
         </div>
         <div className="flex justify-between">
-          <span>Impuestos</span>
-          <span className="text-antracita font-bold">$0.00</span>
+          <span>Impuestos (8%)</span>
+          <span className="text-antracita font-bold">${taxes.toFixed(2)}</span>
         </div>
       </div>
 

@@ -8,10 +8,10 @@ function AdminSidebar({ user, logout }) {
     <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-neutral-200 flex flex-col flex-shrink-0 lg:min-h-screen text-antracita">
 
       {/* Encabezado del panel — nombre de la tienda y rol */}
-      <div className="p-6 border-b border-neutral-200 flex flex-col space-y-1">
+      <header className="p-6 border-b border-neutral-200 flex flex-col space-y-1">
         <h2 className="text-base font-bold text-antracita uppercase tracking-wider font-title">Panel Mundialista</h2>
         <span className="text-[10px] text-neutral-450 font-bold uppercase tracking-wider">Administrador</span>
-      </div>
+      </header>
 
       {/* Links de navegación del panel admin */}
       <nav className="flex-grow p-4 space-y-2" aria-label="Navegación del Administrador">
@@ -27,11 +27,17 @@ function AdminSidebar({ user, logout }) {
             }`
           }
         >
-          {/* Ícono de gráfico de barras */}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          <span>Ventas</span>
+          {({ isActive }) => (
+            <>
+              <img
+                src="/assets/Icon (1).svg"
+                alt="Ventas"
+                className="w-4 h-4 object-contain"
+                style={{ filter: isActive ? 'brightness(0) invert(1)' : 'none' }}
+              />
+              <span>Ventas</span>
+            </>
+          )}
         </NavLink>
 
         {/* Link a Inventario */}
@@ -45,11 +51,17 @@ function AdminSidebar({ user, logout }) {
             }`
           }
         >
-          {/* Ícono de caja/paquete */}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-          <span>Inventario</span>
+          {({ isActive }) => (
+            <>
+              <img
+                src="/assets/Icon.svg"
+                alt="Inventario"
+                className="w-4 h-4 object-contain"
+                style={{ filter: isActive ? 'brightness(0) invert(1)' : 'none' }}
+              />
+              <span>Inventario</span>
+            </>
+          )}
         </NavLink>
 
         {/* Link a Clientes (agregar usuarios) */}
@@ -63,16 +75,22 @@ function AdminSidebar({ user, logout }) {
             }`
           }
         >
-          {/* Ícono de persona con signo + */}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Clientes</span>
+          {({ isActive }) => (
+            <>
+              <img
+                src="/assets/Icon (2).svg"
+                alt="Clientes"
+                className="w-4 h-4 object-contain"
+                style={{ filter: isActive ? 'brightness(0) invert(1)' : 'none' }}
+              />
+              <span>Clientes</span>
+            </>
+          )}
         </NavLink>
       </nav>
 
       {/* Parte inferior del sidebar: info del usuario logueado y botones de sesión */}
-      <div className="p-4 border-t border-neutral-200 space-y-3.5 bg-neutral-50">
+      <footer className="p-4 border-t border-neutral-200 space-y-3.5 bg-neutral-50">
         {/* Avatar (inicial del nombre) + nombre y email del admin */}
         <div className="flex items-center space-x-3 px-2">
           {/* Avatar generado con la primera letra del nombre */}
@@ -102,7 +120,7 @@ function AdminSidebar({ user, logout }) {
             Cerrar Sesión
           </button>
         </div>
-      </div>
+      </footer>
     </aside>
   );
 }

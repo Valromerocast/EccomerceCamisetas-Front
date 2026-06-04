@@ -43,60 +43,110 @@ function App() {
   // los descarto y vuelvo a los productos de fábrica.
   const [products, setProducts] = useState(() => {
     const saved = localStorage.getItem('camisetas_products');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.length !== INITIAL_PRODUCTS.length || !parsed.some(p => p.name === "Argentina Scaloneta")) {
-        localStorage.removeItem('camisetas_products');
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed)) {
+          // Descarto el localStorage si la estructura de stock es vieja (tipo número) para evitar fallos
+          if (
+            parsed.length !== INITIAL_PRODUCTS.length ||
+            !parsed.some(p => p.name === "Argentina Scaloneta") ||
+            parsed.some(p => typeof p.stock === 'number')
+          ) {
+            localStorage.removeItem('camisetas_products');
+            return INITIAL_PRODUCTS;
+          }
+          return parsed;
+        }
+      } catch {
         return INITIAL_PRODUCTS;
       }
-      return parsed;
     }
     return INITIAL_PRODUCTS;
-  });
-
-  // Carrito de compras: persisto los artículos para que no se pierdan si el usuario recarga la página
-  const [cart, setCart] = useState(() => {
-    const saved = localStorage.getItem('camisetas_cart');
-    return saved ? JSON.parse(saved) : [];
   });
 
   // Usuario logueado actualmente. Limpio la sesión si el nombre era el del admin viejo
   // (antes se llamaba "Admin Valen", ahora es genérico "Admin")
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('camisetas_user');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Si encuentra al admin viejo, lo borra para forzar un nuevo login
-      if (parsed.name === 'Admin Valen') {
-        localStorage.removeItem('camisetas_user');
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        // Si encuentra al admin viejo, lo borra para forzar un nuevo login
+        if (parsed && parsed.name === 'Admin Valen') {
+          localStorage.removeItem('camisetas_user');
+          return null;
+        }
+        return parsed;
+      } catch {
         return null;
       }
-      return parsed;
     }
     return null;
+  });
+
+  // Carrito de compras: persisto los artículos por usuario para que cada uno tenga el suyo independiente
+  const [cart, setCart] = useState(() => {
+    // Para el estado inicial de la recarga, intentamos obtener el usuario desde localStorage directamente
+    const savedUser = localStorage.getItem('camisetas_user');
+    let email = null;
+    if (savedUser && savedUser !== 'null') {
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.name !== 'Admin Valen') {
+          email = parsed.email;
+        }
+      } catch {}
+    }
+    if (!email) return [];
+
+    const saved = localStorage.getItem(`camisetas_cart_${email}`);
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
 
   // Historial de órdenes de compra de todos los usuarios
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('camisetas_orders');
-    return saved ? JSON.parse(saved) : [];
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
 
   // Lista de todos los usuarios registrados (simula una base de datos en el front)
   // Si existe el admin viejo "Admin Valen", lo reemplazo por el admin genérico
   const [usersList, setUsersList] = useState(() => {
     const saved = localStorage.getItem('camisetas_users_list');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const hasOldAdmin = parsed.some(u => u.name === 'Admin Valen');
-      if (hasOldAdmin) {
-        localStorage.removeItem('camisetas_users_list');
-        return [
-          { name: 'Admin', email: 'admin@tshirt.com', password: 'admin', role: 'admin' },
-          { name: 'Test User', email: 'test@tshirt.com', password: 'user', role: 'user' }
-        ];
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed)) {
+          const hasOldAdmin = parsed.some(u => u.name === 'Admin Valen');
+          if (hasOldAdmin) {
+            localStorage.removeItem('camisetas_users_list');
+            return [
+              { name: 'Admin', email: 'admin@tshirt.com', password: 'admin', role: 'admin' },
+              { name: 'Test User', email: 'test@tshirt.com', password: 'user', role: 'user' }
+            ];
+          }
+          return parsed;
+        }
+      } catch {
+        // Fallback below
       }
-      return parsed;
     }
     // Datos por defecto la primera vez que se ejecuta la app
     return [
@@ -115,8 +165,10 @@ function App() {
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('camisetas_cart', JSON.stringify(cart));
-  }, [cart]);
+    if (user) {
+      localStorage.setItem(`camisetas_cart_${user.email}`, JSON.stringify(cart));
+    }
+  }, [cart, user]);
 
   useEffect(() => {
     localStorage.setItem('camisetas_user', JSON.stringify(user));
@@ -134,9 +186,9 @@ function App() {
   // ─── 3. Funciones del carrito ─────────────────────────────────────────────
 
   // Agrega un producto al carrito. Si el usuario no está logueado, redirige al login.
-  // Si ya existe el mismo producto con la misma talla y color, suma la cantidad.
+  // Si ya existe el mismo producto con la misma talla, suma la cantidad.
   // Nunca permite agregar más unidades de las que hay en stock.
-  const addToCart = (product, quantity, size, color) => {
+  const addToCart = (product, quantity, size) => {
     if (!user) {
       // Sin sesión activa no se puede comprar
       window.location.href = "/login";
@@ -149,13 +201,15 @@ function App() {
     }
     const qty = parseInt(quantity, 10) || 1;
     setCart((prevCart) => {
-      // La clave única del ítem combina id + talla + color para distinguir variantes del mismo producto
-      const cartKey = `${product.id}-${size}-${color}`;
+      // La clave única del ítem combina id + talla para distinguir variantes del mismo producto
+      const cartKey = `${product.id}-${size}`;
       const existingItemIndex = prevCart.findIndex((item) => item.cartKey === cartKey);
 
       // Busco el producto actualizado para respetar el stock actual (puede haber cambiado)
       const freshProduct = products.find((p) => p.id === product.id) || product;
-      const currentStock = freshProduct.stock;
+      const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
+        ? (freshProduct.stock[size] || 0)
+        : freshProduct.stock;
 
       if (existingItemIndex > -1) {
         // Si ya está en el carrito, sumo la cantidad pero sin pasarme del stock
@@ -172,7 +226,7 @@ function App() {
       } else {
         // Es un artículo nuevo en el carrito
         const finalQty = Math.min(qty, currentStock);
-        return [...prevCart, { cartKey, product, quantity: finalQty, size, color }];
+        return [...prevCart, { cartKey, product, quantity: finalQty, size }];
       }
     });
     return true;
@@ -190,7 +244,10 @@ function App() {
       prevCart.map((item) => {
         if (item.cartKey === cartKey) {
           const freshProduct = products.find((p) => p.id === item.product.id) || item.product;
-          return { ...item, quantity: Math.min(qty, freshProduct.stock) };
+          const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
+            ? (freshProduct.stock[item.size] || 0)
+            : freshProduct.stock;
+          return { ...item, quantity: Math.min(qty, currentStock) };
         }
         return item;
       })
@@ -217,7 +274,20 @@ function App() {
       (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
     );
     if (foundUser) {
-      setUser({ name: foundUser.name, email: foundUser.email, role: foundUser.role });
+      const loggedUser = { name: foundUser.name, email: foundUser.email, role: foundUser.role };
+      setUser(loggedUser);
+      // Cargar el carrito específico de este usuario si ya existe
+      const savedCart = localStorage.getItem(`camisetas_cart_${loggedUser.email}`);
+      if (savedCart && savedCart !== 'null') {
+        try {
+          const parsed = JSON.parse(savedCart);
+          setCart(Array.isArray(parsed) ? parsed : []);
+        } catch {
+          setCart([]);
+        }
+      } else {
+        setCart([]);
+      }
       return { success: true, user: foundUser };
     }
     return { success: false, message: 'Credenciales incorrectas' };
@@ -226,6 +296,7 @@ function App() {
   // Cierra la sesión borrando el usuario del estado (también se borrará del localStorage por el useEffect)
   const logout = () => {
     setUser(null);
+    setCart([]); // Vacía el carrito al cerrar sesión para no seguir viendo lo que se agregó
   };
 
   // Registra un nuevo usuario. Solo acepta el rol 'user', el admin es único y no se puede crear desde acá.
@@ -251,7 +322,9 @@ function App() {
   const placeOrder = (shippingInfo, paymentMethod) => {
     if (enrichedCart.length === 0) return { success: false, message: 'El carrito está vacío' };
 
-    const total = enrichedCart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+    const subtotal = enrichedCart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+    const taxes = subtotal * 0.08;
+    const total = subtotal + taxes;
     const newOrder = {
       id: `ORD-${Date.now().toString().slice(-6)}`,   // ID único basado en timestamp
       date: new Date().toLocaleDateString(),
@@ -269,11 +342,24 @@ function App() {
     setProducts((prevProducts) =>
       prevProducts.map((p) => {
         const cartItemsForProduct = enrichedCart.filter((item) => item.product.id === p.id);
-        const totalPurchased = cartItemsForProduct.reduce((sum, item) => sum + item.quantity, 0);
-        return {
-          ...p,
-          stock: Math.max(0, p.stock - totalPurchased)  // nunca negativo
-        };
+        if (cartItemsForProduct.length === 0) return p;
+
+        if (typeof p.stock === 'object' && p.stock !== null) {
+          const newStock = { ...p.stock };
+          cartItemsForProduct.forEach((item) => {
+            const size = item.size;
+            if (newStock[size] !== undefined) {
+              newStock[size] = Math.max(0, newStock[size] - item.quantity);
+            }
+          });
+          return { ...p, stock: newStock };
+        } else {
+          const totalPurchased = cartItemsForProduct.reduce((sum, item) => sum + item.quantity, 0);
+          return {
+            ...p,
+            stock: Math.max(0, p.stock - totalPurchased)  // nunca negativo
+          };
+        }
       })
     );
 
@@ -291,15 +377,15 @@ function App() {
     const newProduct = {
       id: newId,
       name: newProductData.name,
+      subtitle: newProductData.subtitle || '', // guardo el equipo o la selección
       price: parseFloat(newProductData.price),
       description: newProductData.description,
       category: newProductData.category,
       sizes: newProductData.sizes,       // array de talles disponibles
-      colors: newProductData.colors,     // array de colores disponibles
-      image: newProductData.image || '/assets/hero-left.svg',  // imagen por defecto si no se cargó una
+      image: newProductData.image || '/assets/success.svg',
       rating: 5.0,
       reviewsCount: 0,
-      stock: parseInt(newProductData.stock, 10),
+      stock: typeof newProductData.stock === 'object' ? newProductData.stock : {}, // guardo el objeto de stock por talle
       featured: newProductData.featured || false
     };
     setProducts((prev) => [...prev, newProduct]);
