@@ -1,3 +1,4 @@
+
 # Arquitectura y Datos
 
 ## Arquitectura completa del sistema
@@ -135,8 +136,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 | Agregar al carrito | Modifica `cart[]` en memoria | `POST /api/carrito/items` |
 | Finalizar compra | Crea orden en `orders[]` | `POST /api/pedidos` |
 | Registrar usuario | Agrega a `usersList[]` | `POST /api/auth/register` |
-
-### Comunicación interna del frontend (estado actual)
 
 ### ¿Cómo se comunican los componentes entre sí?
 

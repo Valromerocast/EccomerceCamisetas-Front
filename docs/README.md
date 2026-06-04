@@ -8,8 +8,8 @@ Documentación técnica del frontend del e-commerce de camisetas de selecciones 
 
 | Archivo | Contenido |
 |---|---|
-| [stack-tecnologico.md](./stack-tecnologico.md) | Qué tecnologías se usaron, qué es una API, por qué no hay backend |
-| [arquitectura-y-datos.md](./arquitectura-y-datos.md) | Cómo está estructurada la app, cómo se persisten los datos, flujo de props |
+| [stack-tecnologico.md](./stack-tecnologico.md) | Qué tecnologías se usaron (React, Vite, Spring Boot, H2), qué es una API |
+| [arquitectura-y-datos.md](./arquitectura-y-datos.md) | Arquitectura completa del sistema, persistencia en localStorage, rutas |
 | [circuitos.md](./circuitos.md) | Todos los flujos funcionales: carrito, checkout, login, logout, agregar producto, descuento de envío |
 | [api-interna.md](./api-interna.md) | Cada función documentada con parámetros y efectos, conectores de React Router, carrito enriquecido |
 
@@ -23,7 +23,7 @@ Documentación técnica del frontend del e-commerce de camisetas de selecciones 
 | ¿Con qué desarrollaron el back? | [stack-tecnologico.md](./stack-tecnologico.md) | ¿Hay un backend? |
 | ¿Qué es una API? | [stack-tecnologico.md](./stack-tecnologico.md) | ¿Qué es una API? |
 | ¿Cómo nos conectamos con la base de datos? | [arquitectura-y-datos.md](./arquitectura-y-datos.md) | Persistencia de datos |
-| ¿Cómo se conecta el back con el front? | [arquitectura-y-datos.md](./arquitectura-y-datos.md) | Arquitectura sin backend |
+| ¿Cómo se conecta el back con el front? | [arquitectura-y-datos.md](./arquitectura-y-datos.md) | ¿Cómo se conecta el back con el front? |
 | ¿Cómo es el recorrido del carrito? | [circuitos.md](./circuitos.md) | Circuito del Carrito |
 | ¿Cómo llegamos al fin de la compra? | [circuitos.md](./circuitos.md) | Circuito de Checkout |
 | ¿Cuál es el circuito al sacar un producto del carrito? | [circuitos.md](./circuitos.md) | Eliminar producto del carrito |
