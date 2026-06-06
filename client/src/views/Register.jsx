@@ -34,9 +34,29 @@ function Register({ registerUser }) {
     e.preventDefault();
     setError('');
 
+    const trimmedName = formData.name.trim();
+    const trimmedEmail = formData.email.trim();
+
     // Verifico que todos los campos estén completados
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!trimmedName || !trimmedEmail || !formData.password || !formData.confirmPassword) {
       setError('Por favor, completa todos los campos.');
+      return;
+    }
+
+    // Validación del nombre completo
+    if (trimmedName.length < 3) {
+      setError('El nombre completo debe tener al menos 3 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
+      setError('El nombre completo solo debe contener letras y espacios.');
+      return;
+    }
+
+    // Validación de formato de correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('El correo electrónico no tiene un formato válido (ej: usuario@correo.com).');
       return;
     }
 
@@ -59,7 +79,7 @@ function Register({ registerUser }) {
     }
 
     // Llamo a la función de registro del App (que también controla si el email ya existe)
-    const res = registerUser(formData.name, formData.email, formData.password);
+    const res = registerUser(trimmedName, trimmedEmail, formData.password);
     if (res.success) {
       navigate('/register-success');  // mando a la pantalla de éxito
     } else {

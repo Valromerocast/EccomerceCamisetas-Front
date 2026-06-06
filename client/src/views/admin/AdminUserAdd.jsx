@@ -28,14 +28,40 @@ function AdminUserAdd({ registerUser }) {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
+    const trimmedName = formData.name.trim();
+    const trimmedEmail = formData.email.trim();
+
     // Todos los campos son obligatorios
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!trimmedName || !trimmedEmail || !formData.password) {
       setMessage({ type: 'error', text: 'Por favor, completa todos los campos.' });
       return;
     }
 
+    // Validación del nombre completo
+    if (trimmedName.length < 3) {
+      setMessage({ type: 'error', text: 'El nombre completo debe tener al menos 3 caracteres.' });
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
+      setMessage({ type: 'error', text: 'El nombre completo solo debe contener letras y espacios.' });
+      return;
+    }
+
+    // Validación del correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setMessage({ type: 'error', text: 'El correo electrónico no tiene un formato válido (ej: usuario@correo.com).' });
+      return;
+    }
+
+    // Validación de contraseña
+    if (formData.password.length < 4) {
+      setMessage({ type: 'error', text: 'La contraseña temporal debe tener al menos 4 caracteres.' });
+      return;
+    }
+
     // Llamo a la función del App que valida y guarda el usuario
-    const res = registerUser(formData.name, formData.email, formData.password, formData.role);
+    const res = registerUser(trimmedName, trimmedEmail, formData.password, formData.role);
     if (res.success) {
       setMessage({
         type: 'success',

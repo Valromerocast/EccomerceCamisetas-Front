@@ -112,9 +112,33 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
     e.preventDefault();
     setError('');
 
+    const trimmedName = formData.name.trim();
+    const trimmedSubtitle = formData.subtitle.trim();
+    const trimmedDescription = formData.description.trim();
+    const trimmedImage = formData.image.trim();
+
     // Todos los campos básicos son obligatorios
-    if (!formData.name || !formData.price || !formData.description || !formData.subtitle) {
+    if (!trimmedName || !formData.price || !trimmedDescription || !trimmedSubtitle) {
       setError('Por favor, completa todos los campos del producto.');
+      return;
+    }
+
+    // Validación de longitud del nombre
+    if (trimmedName.length < 3 || trimmedName.length > 80) {
+      setError('El nombre del producto debe tener entre 3 y 80 caracteres.');
+      return;
+    }
+
+    // Validación de precio
+    const parsedPrice = parseFloat(formData.price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      setError('El precio debe ser un número válido mayor a cero.');
+      return;
+    }
+
+    // Validación de ruta de imagen (opcional, pero si está rellena debe ser válida)
+    if (trimmedImage && !trimmedImage.startsWith('/') && !trimmedImage.startsWith('http://') && !trimmedImage.startsWith('https://')) {
+      setError('La ruta de la imagen debe comenzar con "/" (ej: /assets/imagen.jpg) o ser una URL absoluta válida (http:// o https://).');
       return;
     }
 
@@ -136,15 +160,16 @@ function AdminProductEdit({ products = [], addProduct, updateProduct }) {
       return;
     }
 
-
-
-    // Preparo el payload final
+    // Preparo el payload final con valores limpios
     const payload = {
       ...formData,
-      price: parseFloat(formData.price),
+      name: trimmedName,
+      subtitle: trimmedSubtitle,
+      description: trimmedDescription,
+      price: parsedPrice,
       sizes: sizesPayload,
       stock: stockPayload,
-      image: formData.image || '/assets/success.svg'  // imagen por defecto si no se cargó
+      image: trimmedImage || '/assets/success.svg'  // imagen por defecto si no se cargó
     };
 
     if (isEditMode) {

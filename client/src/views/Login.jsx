@@ -37,13 +37,28 @@ function Login({ user, login }) {
     e.preventDefault();
     setError('');
 
+    const emailTrimmed = formData.email.trim();
+
     // Validación básica de campos vacíos
-    if (!formData.email || !formData.password) {
+    if (!emailTrimmed || !formData.password) {
       setError('Por favor, completa todos los campos.');
       return;
     }
 
-    const res = login(formData.email, formData.password);
+    // Validación de formato de correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTrimmed)) {
+      setError('El correo electrónico no tiene un formato válido (ej: usuario@correo.com).');
+      return;
+    }
+
+    // Validación de longitud mínima de contraseña
+    if (formData.password.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+
+    const res = login(emailTrimmed, formData.password);
     if (res.success) {
       // Redirige según el rol: admin al panel, usuario normal a su perfil
       navigate(res.user.role === 'admin' ? '/admin/sales' : '/profile');

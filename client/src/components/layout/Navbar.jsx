@@ -53,27 +53,15 @@ function Navbar({ user, cartCount, logout }) {
             >
               Inicio
             </NavLink>
-            {/* Filtra el catálogo por la categoría "Titulares" directamente desde la URL */}
             <NavLink
-              to="/catalog?category=Titulares"
+              to="/catalog"
               className={({ isActive }) =>
                 `text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
                   isActive ? 'text-primary' : 'text-antracita/70 hover:text-primary'
                 }`
               }
             >
-              Principales
-            </NavLink>
-            {/* Filtra el catálogo por la categoría "Suplentes" */}
-            <NavLink
-              to="/catalog?category=Suplentes"
-              className={({ isActive }) =>
-                `text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
-                  isActive ? 'text-primary' : 'text-antracita/70 hover:text-primary'
-                }`
-              }
-            >
-              Suplentes
+              Camisetas
             </NavLink>
             <NavLink
               to="/contact"
@@ -220,18 +208,11 @@ function Navbar({ user, cartCount, logout }) {
               Inicio
             </Link>
             <Link
-              to="/catalog?category=Titulares"
+              to="/catalog"
               onClick={() => setMobileMenuOpen(false)}
               className="text-antracita/80 hover:text-primary text-sm font-bold uppercase tracking-wider py-1.5 border-b border-neutral-100"
             >
-              Principales
-            </Link>
-            <Link
-              to="/catalog?category=Suplentes"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-antracita/80 hover:text-primary text-sm font-bold uppercase tracking-wider py-1.5 border-b border-neutral-100"
-            >
-              Suplentes
+              Camisetas
             </Link>
             <Link
               to="/contact"

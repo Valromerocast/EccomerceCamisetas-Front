@@ -12,7 +12,13 @@ export const INITIAL_PRODUCTS = [
     rating: 4.9,
     reviewsCount: 310,
     stock: { S: 5, M: 7, L: 6, XL: 4, XXL: 0 },
-    featured: true
+    featured: true,
+    specs: {
+      composition: "100% Poliéster reciclado de alta densidad",
+      technology: "Dri-FIT ADV para máxima transpirabilidad",
+      details: "Escudo de la CBF bordado y detalles amarillos en cuello",
+      origin: "Importado / Réplica oficial premium"
+    }
   },
   {
     id: 2,
@@ -27,7 +33,13 @@ export const INITIAL_PRODUCTS = [
     rating: 4.9,
     reviewsCount: 114,
     stock: { S: 1, M: 2, L: 2, XL: 1, XXL: 0 },
-    featured: true
+    featured: true,
+    specs: {
+      composition: "100% Poliéster reciclado",
+      technology: "Aeroready ventilado con control de humedad",
+      details: "Gráficos de llamas en mangas y logo de JFA tejido",
+      origin: "Importado / Réplica oficial premium"
+    }
   },
   {
     id: 3,
@@ -42,7 +54,13 @@ export const INITIAL_PRODUCTS = [
     rating: 4.7,
     reviewsCount: 112,
     stock: { S: 4, M: 4, L: 4, XL: 4, XXL: 0 },
-    featured: true
+    featured: true,
+    specs: {
+      composition: "100% Poliéster reciclado",
+      technology: "Dri-FIT absorbente de sudor",
+      details: "Escudo clásico Three Lions y cuello retro abotonado",
+      origin: "Importado / Réplica oficial premium"
+    }
   },
   {
     id: 4,
@@ -57,7 +75,13 @@ export const INITIAL_PRODUCTS = [
     rating: 5.0,
     reviewsCount: 520,
     stock: { S: 3, M: 4, L: 3, XL: 2, XXL: 0 },
-    featured: true
+    featured: true,
+    specs: {
+      composition: "100% Poliéster de doble punto premium",
+      technology: "Heat.Rdy para mantenerte fresco",
+      details: "Escudo AFA bordado con las 3 estrellas doradas y parche de Campeón del Mundo",
+      origin: "Importado / Réplica oficial premium"
+    }
   },
   {
     id: 5,
@@ -72,7 +96,13 @@ export const INITIAL_PRODUCTS = [
     rating: 4.8,
     reviewsCount: 88,
     stock: { S: 2, M: 2, L: 2, XL: 2, XXL: 0 },
-    featured: false
+    featured: false,
+    specs: {
+      composition: "100% Poliéster reciclado de alto rendimiento",
+      technology: "Dri-FIT ADV con zonas de ventilación",
+      details: "Gallo de la FFF bordado en relieve y puños tricolores",
+      origin: "Importado / Réplica oficial premium"
+    }
   },
   {
     id: 6,
@@ -87,6 +117,12 @@ export const INITIAL_PRODUCTS = [
     rating: 4.6,
     reviewsCount: 94,
     stock: { S: 3, M: 4, L: 4, XL: 3, XXL: 0 },
-    featured: false
+    featured: false,
+    specs: {
+      composition: "100% Poliéster reciclado",
+      technology: "Aeroready transpirable",
+      details: "Escudo DFB en el pecho y patrón degradado moderno",
+      origin: "Importado / Réplica oficial premium"
+    }
   }
 ];

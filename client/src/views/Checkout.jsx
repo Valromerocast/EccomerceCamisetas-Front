@@ -7,6 +7,80 @@ import { Input } from '../components/ui/Form';
 import PaymentMethods from '../components/checkout/PaymentMethods';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 
+// Helper functions for card validation
+const validateLuhn = (cardNumber) => {
+  const digits = cardNumber.replace(/\D/g, '');
+  if (!digits || digits.length < 13) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let val = parseInt(digits.charAt(i), 10);
+    if (shouldDouble) {
+      val *= 2;
+      if (val > 9) val -= 9;
+    }
+    sum += val;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
+};
+
+const validateCardNumber = (number) => {
+  const cleanNum = number.replace(/\s+/g, '');
+  if (!/^\d{15,16}$/.test(cleanNum)) {
+    return 'El número de tarjeta debe tener entre 15 y 16 dígitos.';
+  }
+  if (!validateLuhn(cleanNum)) {
+    return 'El número de tarjeta ingresado no es válido. Por favor, verifícalo.';
+  }
+  return null;
+};
+
+const validateCardName = (name) => {
+  const trimmed = name.trim();
+  if (trimmed.length < 3) {
+    return 'Mínimo 3 caracteres';
+  }
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmed)) {
+    return 'Solo debe contener letras';
+  }
+  return null;
+};
+
+const validateExpiry = (expiry) => {
+  const trimmed = expiry.trim();
+  if (!/^\d{2}\/\d{2}$/.test(trimmed)) {
+    return 'Formato inválido (MM/YY)';
+  }
+  const [mStr, yStr] = trimmed.split('/');
+  const month = parseInt(mStr, 10);
+  const year = parseInt(yStr, 10) + 2000;
+
+  if (month < 1 || month > 12) {
+    return 'Mes inválido (01-12)';
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-indexed
+
+  if (year < currentYear || (year === currentYear && month < currentMonth)) {
+    return 'Tarjeta vencida';
+  }
+  if (year > currentYear + 15) {
+    return 'Año inválido';
+  }
+  return null;
+};
+
+const validateCvv = (cvv) => {
+  const trimmed = cvv.trim();
+  if (!/^\d{3,4}$/.test(trimmed)) {
+    return 'Debe tener 3 o 4 dígitos';
+  }
+  return null;
+};
+
 function Checkout({ cart = [], user, placeOrder }) {
   const navigate = useNavigate();
 
@@ -29,6 +103,17 @@ function Checkout({ cart = [], user, placeOrder }) {
   // Método de pago seleccionado — por defecto Mercado Pago
   const [paymentMethod, setPaymentMethod] = useState('mercadopago');
 
+  // Estado de los datos de tarjeta
+  const [cardData, setCardData] = useState({
+    number: '',
+    name: '',
+    expiry: '',
+    cvv: ''
+  });
+
+  // Estado de errores de tarjeta
+  const [cardErrors, setCardErrors] = useState({});
+
   // Mensaje de error de validación del formulario
   const [error, setError] = useState('');
 
@@ -42,15 +127,97 @@ function Checkout({ cart = [], user, placeOrder }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
+    setCardErrors({});
+
+    const trimmedData = {
+      fullName: formData.fullName.trim(),
+      email: formData.email.trim(),
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      zipCode: formData.zipCode.trim(),
+      phone: formData.phone.trim()
+    };
 
     // Todos los campos de envío son obligatorios
-    if (!formData.fullName || !formData.email || !formData.address || !formData.city || !formData.zipCode || !formData.phone) {
+    if (!trimmedData.fullName || !trimmedData.email || !trimmedData.address || !trimmedData.city || !trimmedData.zipCode || !trimmedData.phone) {
       setError('Por favor, completa todos los campos del envío.');
       return;
     }
 
+    // Validación del nombre completo
+    if (trimmedData.fullName.length < 3) {
+      setError('El nombre completo del envío debe tener al menos 3 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedData.fullName)) {
+      setError('El nombre completo del envío solo debe contener letras y espacios.');
+      return;
+    }
+
+    // Validación del correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedData.email)) {
+      setError('El correo electrónico no tiene un formato válido (ej: usuario@correo.com).');
+      return;
+    }
+
+    // Validación de la dirección
+    if (trimmedData.address.length < 5) {
+      setError('La dirección de entrega debe tener al menos 5 caracteres.');
+      return;
+    }
+
+    // Validación de la ciudad
+    if (trimmedData.city.length < 3) {
+      setError('La ciudad o localidad debe tener al menos 3 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedData.city)) {
+      setError('La ciudad o localidad solo debe contener letras y espacios.');
+      return;
+    }
+
+    // Validación del código postal
+    if (trimmedData.zipCode.length < 4 || trimmedData.zipCode.length > 10) {
+      setError('El código postal debe tener entre 4 y 10 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9\s\-]+$/.test(trimmedData.zipCode)) {
+      setError('El código postal solo debe contener letras, números, espacios o guiones.');
+      return;
+    }
+
+    // Validación del teléfono
+    if (!/^[+0-9\s\-()]{7,20}$/.test(trimmedData.phone)) {
+      setError('El teléfono de contacto no es válido. Debe tener entre 7 y 20 caracteres y contener solo números, espacios, +, - o ().');
+      return;
+    }
+
+    // Si el método de pago es tarjeta, validamos los campos de la tarjeta
+    if (paymentMethod === 'tarjeta') {
+      const errors = {};
+      
+      const numError = validateCardNumber(cardData.number);
+      if (numError) errors.number = numError;
+
+      const nameError = validateCardName(cardData.name);
+      if (nameError) errors.name = nameError;
+
+      const expiryError = validateExpiry(cardData.expiry);
+      if (expiryError) errors.expiry = expiryError;
+
+      const cvvError = validateCvv(cardData.cvv);
+      if (cvvError) errors.cvv = cvvError;
+
+      if (Object.keys(errors).length > 0) {
+        setCardErrors(errors);
+        setError('Por favor, corrige los errores en los datos de la tarjeta.');
+        return;
+      }
+    }
+
     // Llamo a la función del App que crea la orden, descuenta el stock y limpia el carrito
-    const result = placeOrder(formData, paymentMethod);
+    const result = placeOrder(trimmedData, paymentMethod);
     if (result.success) {
       navigate('/order-success');  // redirigir a la confirmación
     } else {
@@ -141,7 +308,14 @@ function Checkout({ cart = [], user, placeOrder }) {
 
           {/* Tarjeta del selector de método de pago */}
           <section className="bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-            <PaymentMethods selectedMethod={paymentMethod} setSelectedMethod={setPaymentMethod} />
+            <PaymentMethods 
+              selectedMethod={paymentMethod} 
+              setSelectedMethod={setPaymentMethod} 
+              cardData={cardData}
+              setCardData={setCardData}
+              cardErrors={cardErrors}
+              setCardErrors={setCardErrors}
+            />
           </section>
         </div>
 

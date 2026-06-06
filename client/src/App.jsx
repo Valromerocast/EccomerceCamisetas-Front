@@ -155,6 +155,20 @@ function App() {
     ];
   });
 
+  // Favoritos: guarda los IDs de los productos marcados como favoritos
+  const [favorites, setFavorites] = useState(() => {
+    const saved = localStorage.getItem('camisetas_favorites');
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
 
   // ─── 2. Sincronización con localStorage ──────────────────────────────────
   // Cada vez que cambia algún estado importante, lo guardo en localStorage
@@ -181,6 +195,19 @@ function App() {
   useEffect(() => {
     localStorage.setItem('camisetas_users_list', JSON.stringify(usersList));
   }, [usersList]);
+
+  useEffect(() => {
+    localStorage.setItem('camisetas_favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  // Alterna el estado de favorito de un producto
+  const toggleFavorite = (productId) => {
+    setFavorites((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    );
+  };
 
 
   // ─── 3. Funciones del carrito ─────────────────────────────────────────────
@@ -429,8 +456,8 @@ function App() {
       <Routes>
         {/* Rutas públicas: todas usan el Layout con Navbar y Footer */}
         <Route element={<Layout user={user} cartCount={enrichedCart.reduce((sum, item) => sum + item.quantity, 0)} logout={logout} />}>
-          <Route path="/" element={<Home products={products} addToCart={addToCart} />} />
-          <Route path="/catalog" element={<Catalog products={products} addToCart={addToCart} />} />
+          <Route path="/" element={<Home products={products} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
+          <Route path="/catalog" element={<Catalog products={products} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
           <Route path="/product/:id" element={<ProductDetail products={products} addToCart={addToCart} />} />
           <Route path="/cart" element={<Cart cart={enrichedCart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} clearCart={clearCart} />} />
           <Route path="/checkout" element={<Checkout cart={enrichedCart} user={user} placeOrder={placeOrder} />} />

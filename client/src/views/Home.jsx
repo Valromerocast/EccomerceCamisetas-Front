@@ -4,7 +4,7 @@
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/product/ProductCard';
 
-function Home({ products = [], addToCart }) {
+function Home({ products = [], addToCart, favorites = [], toggleFavorite }) {
   // Tomo solo los primeros 3 productos marcados como "destacados" para la sección de la home
   const featuredProducts = products.filter((p) => p.featured).slice(0, 3);
 
@@ -132,7 +132,13 @@ function Home({ products = [], addToCart }) {
         {/* Grilla de 3 productos featured */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {featuredProducts.map((p) => (
-            <ProductCard key={p.id} product={p} addToCart={addToCart} />
+            <ProductCard
+              key={p.id}
+              product={p}
+              addToCart={addToCart}
+              isFavorite={favorites.includes(p.id)}
+              toggleFavorite={toggleFavorite}
+            />
           ))}
         </div>
 

@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-function ProductCard({ product, addToCart }) {
+function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite }) {
   // Leo el usuario directamente del localStorage para saber si es admin sin necesitar prop extra
   const storedUser = localStorage.getItem('camisetas_user') ? JSON.parse(localStorage.getItem('camisetas_user')) : null;
   const isAdmin = storedUser && storedUser.role === 'admin';
@@ -36,6 +36,13 @@ function ProductCard({ product, addToCart }) {
     }
   };
 
+  const handleFavoriteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (toggleFavorite) {
+      toggleFavorite(product.id);
+    }
+  };
 
   // Si la imagen principal falla, muestro la imagen de fallback del producto o una genérica
   const handleImageError = (e) => {
@@ -43,7 +50,33 @@ function ProductCard({ product, addToCart }) {
   };
 
   return (
-    <article className="group bg-white border border-neutral-200/80 rounded-xl overflow-hidden shadow-sm hover:shadow-primary/5 hover:border-neutral-350 transition-all duration-350 flex flex-col h-full">
+    <article className="group bg-white border border-neutral-200/80 rounded-xl overflow-hidden shadow-sm hover:shadow-primary/5 hover:border-neutral-350 transition-all duration-350 flex flex-col h-full relative">
+
+      {/* Botón de favoritos (corazón) */}
+      {toggleFavorite && (
+        <button
+          onClick={handleFavoriteClick}
+          className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/85 hover:bg-white text-neutral-450 hover:text-red-500 transition-all duration-200 cursor-pointer shadow-sm hover:shadow focus:outline-none backdrop-blur-xs"
+          aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill={isFavorite ? "currentColor" : "none"}
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className={`w-4.5 h-4.5 transition-transform duration-200 hover:scale-110 ${
+              isFavorite ? 'text-red-500 fill-red-500 stroke-red-500' : 'text-neutral-500 hover:text-red-500'
+            }`}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Imagen del producto — el link lleva al detalle completo */}
       <Link to={`/product/${product.id}`} className="block relative overflow-hidden aspect-[4/5] bg-neutral-100">

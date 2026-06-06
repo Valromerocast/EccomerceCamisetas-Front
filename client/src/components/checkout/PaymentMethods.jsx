@@ -1,9 +1,10 @@
 // Selector de métodos de pago del checkout
-// Muestra los métodos disponibles (Mercado Pago, tarjeta, PayPal, transferencia) como botones seleccionables.
-// El método activo queda resaltado con borde verde y fondo suave.
+// Muestra los métodos disponibles (Mercado Pago, tarjeta, PayPal, transferencia) como opciones seleccionables.
+// El método activo queda resaltado con borde verde y fondo suave, y muestra su correspondiente formulario en caso de tarjeta.
 import React from 'react';
+import { Input } from '../ui/Form';
 
-function PaymentMethods({ selectedMethod, setSelectedMethod }) {
+function PaymentMethods({ selectedMethod, setSelectedMethod, cardData, setCardData, cardErrors, setCardErrors }) {
   const methods = [
     {
       id: 'mercadopago',
@@ -46,60 +47,178 @@ function PaymentMethods({ selectedMethod, setSelectedMethod }) {
     }
   ];
 
+  // Formateador dinámico para el número de tarjeta (agrega espacios cada 4 dígitos)
+  const handleCardNumberChange = (e) => {
+    let value = e.target.value.replace(/\D/g, ''); // Solo números
+    if (value.length > 16) {
+      value = value.slice(0, 16);
+    }
+    const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+    setCardData((prev) => ({ ...prev, number: formatted }));
+    if (cardErrors?.number) {
+      setCardErrors((prev) => ({ ...prev, number: null }));
+    }
+  };
+
+  // Formateador dinámico para la fecha de vencimiento (MM/YY)
+  const handleCardExpiryChange = (e) => {
+    let value = e.target.value.replace(/\D/g, ''); // Solo números
+    if (value.length > 4) {
+      value = value.slice(0, 4);
+    }
+    let formatted = value;
+    if (value.length > 2) {
+      formatted = `${value.slice(0, 2)}/${value.slice(2)}`;
+    }
+    setCardData((prev) => ({ ...prev, expiry: formatted }));
+    if (cardErrors?.expiry) {
+      setCardErrors((prev) => ({ ...prev, expiry: null }));
+    }
+  };
+
+  // Filtrado de letras y espacios para el nombre del titular
+  const handleCardNameChange = (e) => {
+    const value = e.target.value;
+    if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/.test(value)) {
+      setCardData((prev) => ({ ...prev, name: value }));
+      if (cardErrors?.name) {
+        setCardErrors((prev) => ({ ...prev, name: null }));
+      }
+    }
+  };
+
+  // Filtrado de números para el CVV
+  const handleCardCvvChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 4) {
+      setCardData((prev) => ({ ...prev, cvv: value }));
+      if (cardErrors?.cvv) {
+        setCardErrors((prev) => ({ ...prev, cvv: null }));
+      }
+    }
+  };
+
   return (
-    <section className="space-y-4 text-antracita">
-      <h3 className="text-xs font-bold text-neutral-500 tracking-wider uppercase font-title">Método de Pago</h3>
+    <fieldset className="space-y-4 text-antracita">
+      <legend className="text-xs font-bold text-neutral-500 tracking-wider uppercase font-title mb-4">
+        Método de Pago
+      </legend>
       {/* Lista de opciones de pago disponibles */}
-      <div className="space-y-3">
+      <ul className="space-y-3">
         {methods.map((method) => {
           const isSelected = selectedMethod === method.id;
           return (
-            <button
-              key={method.id}
-              type="button"
-              onClick={() => setSelectedMethod(method.id)}
-              className={`w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between ${
-                isSelected
-                  ? 'bg-primary/5 border-primary shadow-sm'
-                  : 'bg-white border-neutral-200 hover:border-neutral-350'
+            <li 
+              key={method.id} 
+              className={`border rounded-xl overflow-hidden shadow-sm transition-all duration-200 ${
+                isSelected ? 'border-primary bg-primary/[0.02]' : 'border-neutral-200 bg-white'
               }`}
             >
-              <div className="flex items-center space-x-3.5">
-                <div className={`p-2 rounded-lg bg-neutral-100 ${isSelected ? 'text-primary' : 'text-neutral-500'}`}>
-                  {method.icon}
+              <label 
+                className={`w-full p-4 cursor-pointer flex items-center justify-between select-none ${
+                  isSelected ? 'bg-primary/5' : 'hover:bg-neutral-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={method.id}
+                  checked={isSelected}
+                  onChange={() => setSelectedMethod(method.id)}
+                  className="sr-only"
+                />
+                <div className="flex items-center space-x-3.5">
+                  <div className={`p-2 rounded-lg bg-neutral-100 ${isSelected ? 'text-primary' : 'text-neutral-500'}`}>
+                    {method.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <p className="text-sm font-bold font-title">{method.name}</p>
+                      {method.badge && (
+                        <span className="bg-primary/10 text-primary text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wide border border-primary/20">
+                          {method.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-neutral-500 mt-0.5 leading-normal">{method.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-bold font-title">{method.name}</p>
-                    {method.badge && (
-                      <span className="bg-primary/10 text-primary text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wide border border-primary/20">
-                        {method.badge}
-                      </span>
+
+                {/* Indicador de Selección */}
+                <div className="flex-shrink-0">
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                    isSelected ? 'border-primary' : 'border-neutral-300'
+                  }`}>
+                    {isSelected && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                     )}
                   </div>
-                  <p className="text-xs text-neutral-500 mt-0.5 leading-normal">{method.description}</p>
                 </div>
-              </div>
+              </label>
 
-              {/* Radio Indicator */}
-              <div className="flex-shrink-0">
-                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  isSelected ? 'border-primary' : 'border-neutral-300'
-                }`}>
-                  {isSelected && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
+              {/* Formulario de tarjeta desplegado cuando está seleccionado */}
+              {isSelected && method.id === 'tarjeta' && (
+                <div className="p-5 border-t border-neutral-150 bg-white space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Número de Tarjeta"
+                        name="cardNumber"
+                        value={cardData.number}
+                        onChange={handleCardNumberChange}
+                        placeholder="4517 5678 1234 5678"
+                        error={cardErrors?.number}
+                        required
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Nombre del Titular"
+                        name="cardName"
+                        value={cardData.name}
+                        onChange={handleCardNameChange}
+                        placeholder="JUAN PEREZ"
+                        error={cardErrors?.name}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        label="Fecha de Vencimiento"
+                        name="cardExpiry"
+                        value={cardData.expiry}
+                        onChange={handleCardExpiryChange}
+                        placeholder="MM/YY"
+                        error={cardErrors?.expiry}
+                        required
+                        maxLength="5"
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        label="Código de Seguridad (CVV)"
+                        type="password"
+                        name="cardCvv"
+                        value={cardData.cvv}
+                        onChange={handleCardCvvChange}
+                        placeholder="123"
+                        error={cardErrors?.cvv}
+                        required
+                        maxLength="4"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              )}
+            </li>
           );
         })}
-      </div>
+      </ul>
       <p className="text-[10px] text-neutral-500 font-semibold leading-normal bg-cream p-3 rounded-lg border border-neutral-200 flex items-center space-x-1.5 mt-2">
         <span>🔒</span>
         <span>Tus datos están protegidos por encriptación SSL de 256 bits. Mundialista Store nunca almacena la información completa de tu tarjeta.</span>
       </p>
-    </section>
+    </fieldset>
   );
 }
 

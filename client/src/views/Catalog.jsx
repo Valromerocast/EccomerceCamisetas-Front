@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductGrid from '../components/product/ProductGrid';
 
-function Catalog({ products = [], addToCart }) {
+function Catalog({ products = [], addToCart, favorites = [], toggleFavorite }) {
   const [searchParams] = useSearchParams();
 
   // Leo los parámetros de búsqueda y categoría desde la URL
@@ -43,8 +43,13 @@ function Catalog({ products = [], addToCart }) {
       product.name.toLowerCase().includes(filters.search.toLowerCase()) ||
       product.description.toLowerCase().includes(filters.search.toLowerCase());
 
-    // Coincidencia por categoría (Titulares o Suplentes)
-    const matchesCategory = !filters.category || product.category === filters.category;
+    // Coincidencia por categoría o favoritos
+    let matchesCategory = true;
+    if (filters.category === 'favoritos') {
+      matchesCategory = favorites.includes(product.id);
+    } else if (filters.category) {
+      matchesCategory = product.category === filters.category;
+    }
 
     // Coincidencia por talle seleccionado
     const matchesSize = !filters.size || product.sizes.includes(filters.size);
@@ -72,6 +77,7 @@ function Catalog({ products = [], addToCart }) {
   const getCategoryTitle = () => {
     if (filters.category === 'Titulares') return 'Camisetas Principales';
     if (filters.category === 'Suplentes') return 'Camisetas Suplentes';
+    if (filters.category === 'favoritos') return 'Mis Camisetas Favoritas';
     return 'Catálogo General';
   };
 
@@ -82,6 +88,9 @@ function Catalog({ products = [], addToCart }) {
     }
     if (filters.category === 'Titulares') {
       return 'Viste la gloria local. Diseños clásicos inspirados en la historia, la pasión y los colores tradicionales que definen a cada selección en casa.';
+    }
+    if (filters.category === 'favoritos') {
+      return 'Tus camisetas favoritas guardadas. Revisa y agrega al carrito tus elecciones preferidas.';
     }
     return 'Explora la colección oficial de camisetas de las selecciones nacionales para el Mundial 2026. Diseños exclusivos confeccionados con tejido transpirable premium.';
   };
@@ -100,30 +109,57 @@ function Catalog({ products = [], addToCart }) {
       </header>
 
       {/* Barra de herramientas: contador de artículos y selector de ordenamiento */}
-      <div className="flex items-center justify-between border-b border-neutral-300 pb-3 text-[10px] sm:text-xs font-bold text-neutral-500 tracking-wider uppercase">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-300 pb-3 text-[10px] sm:text-xs font-bold text-neutral-500 tracking-wider uppercase gap-4">
         {/* Muestra cuántos productos coinciden con los filtros activos */}
         <span>{sortedProducts.length} ARTÍCULOS ENCONTRADOS</span>
 
-        {/* Selector de ordenamiento */}
-        <div className="flex items-center space-x-1.5 text-neutral-500 font-semibold normal-case">
-          <span>Ordenar por:</span>
-          <div className="relative inline-block">
-            <select
-              id="sortBy"
-              value={filters.sortBy}
-              onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-              className="appearance-none bg-transparent pr-5 py-0.5 font-bold text-antracita focus:outline-none cursor-pointer text-xs"
-            >
-              <option value="default">Destacados</option>
-              <option value="price-asc">Precio: Menor a Mayor</option>
-              <option value="price-desc">Precio: Mayor a Menor</option>
-              <option value="name-asc">Nombre: A-Z</option>
-            </select>
-            {/* Flechita decorativa del select */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-antracita">
-              <svg className="w-3 h-3 stroke-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-              </svg>
+        {/* Selectores de filtros y ordenamiento */}
+        <div className="flex flex-wrap items-center gap-6">
+          {/* Selector de categoría */}
+          <div className="flex items-center space-x-1.5 text-neutral-500 font-semibold normal-case">
+            <span>Categoría:</span>
+            <div className="relative inline-block">
+              <select
+                id="categoryFilter"
+                value={filters.category}
+                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                className="appearance-none bg-transparent pr-5 py-0.5 font-bold text-antracita focus:outline-none cursor-pointer text-xs"
+              >
+                <option value="">Todas</option>
+                <option value="Titulares">Principales</option>
+                <option value="Suplentes">Suplentes</option>
+                <option value="favoritos">Favoritos ({favorites.length})</option>
+              </select>
+              {/* Flechita decorativa del select */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-antracita">
+                <svg className="w-3 h-3 stroke-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Selector de ordenamiento */}
+          <div className="flex items-center space-x-1.5 text-neutral-500 font-semibold normal-case">
+            <span>Ordenar por:</span>
+            <div className="relative inline-block">
+              <select
+                id="sortBy"
+                value={filters.sortBy}
+                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+                className="appearance-none bg-transparent pr-5 py-0.5 font-bold text-antracita focus:outline-none cursor-pointer text-xs"
+              >
+                <option value="default">Destacados</option>
+                <option value="price-asc">Precio: Menor a Mayor</option>
+                <option value="price-desc">Precio: Mayor a Menor</option>
+                <option value="name-asc">Nombre: A-Z</option>
+              </select>
+              {/* Flechita decorativa del select */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-antracita">
+                <svg className="w-3 h-3 stroke-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -145,7 +181,12 @@ function Catalog({ products = [], addToCart }) {
           </div>
         )}
         {/* Grilla con los productos ya filtrados y ordenados */}
-        <ProductGrid products={sortedProducts} addToCart={addToCart} />
+        <ProductGrid
+          products={sortedProducts}
+          addToCart={addToCart}
+          favorites={favorites}
+          toggleFavorite={toggleFavorite}
+        />
       </div>
     </div>
   );

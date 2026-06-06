@@ -9,6 +9,7 @@ function Contact() {
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,6 +18,42 @@ function Contact() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setError('');
+    setSubmitted(false);
+
+    const trimmedName = formData.name.trim();
+    const trimmedEmail = formData.email.trim();
+    const trimmedMessage = formData.message.trim();
+
+    // Verificación de campos vacíos
+    if (!trimmedName || !trimmedEmail || !trimmedMessage) {
+      setError('Por favor, completa todos los campos.');
+      return;
+    }
+
+    // Validación del nombre completo
+    if (trimmedName.length < 3) {
+      setError('El nombre completo debe tener al menos 3 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
+      setError('El nombre completo solo debe contener letras y espacios.');
+      return;
+    }
+
+    // Validación de formato de correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('El correo electrónico no tiene un formato válido (ej: usuario@correo.com).');
+      return;
+    }
+
+    // Validación de longitud del mensaje
+    if (trimmedMessage.length < 10) {
+      setError('El mensaje debe tener al menos 10 caracteres.');
+      return;
+    }
+
     setSubmitted(true);
     setFormData({ name: '', email: '', subject: 'general', message: '' });
   };
@@ -37,6 +74,12 @@ function Contact() {
           Cada prenda en nuestra colección cuenta un relato de gloria y pasión. Si tienes dudas sobre nuestras piezas de herencia o necesitas asistencia personalizada, nuestro equipo está aquí para acompañarte.
         </p>
       </header>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-500 p-4 rounded-xl text-xs font-bold max-w-2xl mx-auto text-center shadow-sm">
+          {error}
+        </div>
+      )}
 
       {submitted && (
         <div className="bg-emerald-100 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-xs font-bold max-w-2xl mx-auto text-center shadow-sm">

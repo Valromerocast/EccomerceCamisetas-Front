@@ -52,6 +52,13 @@ function ProductDetail({ products = [], addToCart }) {
     );
   }
 
+  const productSpecs = product.specs || {
+    composition: "100% Poliéster reciclado de alta densidad",
+    technology: "Tejido transpirable de alto rendimiento",
+    details: "Escudo y logotipo bordados con costuras reforzadas",
+    origin: "Importado / Réplica oficial premium"
+  };
+
   // Agrego el producto al carrito con la talla y cantidad seleccionados
   const handleAddToCart = () => {
     if (currentSizeStock === 0) return;  // no hago nada si está agotado
@@ -89,7 +96,7 @@ function ProductDetail({ products = [], addToCart }) {
       <section className="grid grid-cols-1 md:grid-cols-2 gap-10 bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-10 shadow-sm">
 
         {/* Columna izquierda: imagen del producto */}
-        <div className="relative aspect-[4/5] bg-neutral-100 rounded-xl overflow-hidden border border-neutral-200">
+        <div className="relative aspect-[4/5] bg-neutral-100 rounded-xl overflow-hidden border border-neutral-200 self-start">
           <img
             src={product.image}
             alt={`Detalle de la camiseta ${product.name}`}
@@ -112,9 +119,9 @@ function ProductDetail({ products = [], addToCart }) {
 
         {/* Columna derecha: información y controles de compra */}
         <div className="space-y-6 flex flex-col justify-between">
-          <div className="space-y-4">
+          <div className="space-y-5">
             {/* Categoría del producto como badge */}
-            <span className="bg-cream text-primary text-[10px] font-bold tracking-wider px-3 py-1 rounded-full border border-neutral-200 uppercase">
+            <span className="inline-block bg-cream text-primary text-[10px] font-bold tracking-wider px-3 py-1 rounded-full border border-neutral-200 uppercase mb-2">
               {product.category}
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-antracita leading-tight font-title">{product.name}</h1>
@@ -126,6 +133,55 @@ function ProductDetail({ products = [], addToCart }) {
 
             {/* Descripción del producto */}
             <p className="text-sm text-neutral-500 leading-relaxed">{product.description}</p>
+
+            {/* Detalles Técnicos y Composición */}
+            <div className="pt-2 space-y-2">
+              <h4 className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase">Especificaciones del producto</h4>
+              <ul className="text-xs text-neutral-500 space-y-1 list-disc pl-4 font-semibold">
+                <li><strong>Composición:</strong> {productSpecs.composition}</li>
+                <li><strong>Tecnología:</strong> {productSpecs.technology}</li>
+                <li><strong>Detalles:</strong> {productSpecs.details}</li>
+                <li><strong>Origen:</strong> {productSpecs.origin}</li>
+              </ul>
+            </div>
+
+            {/* Tabla de Medidas */}
+            <div className="pt-2 space-y-2">
+              <h4 className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase">Guía de Talles y Medidas</h4>
+              <div className="overflow-hidden border border-neutral-200 rounded-lg shadow-sm bg-cream">
+                <table className="min-w-full text-center text-xs">
+                  <thead className="bg-neutral-100 border-b border-neutral-200 text-neutral-500 font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-2 px-3">Talle</th>
+                      <th className="py-2 px-3">Ancho (Axila a Axila)</th>
+                      <th className="py-2 px-3">Largo (Hombro a Cintura)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200 text-neutral-600 font-semibold bg-white">
+                    <tr>
+                      <td className="py-1.5 px-3">S</td>
+                      <td className="py-1.5 px-3">50 cm</td>
+                      <td className="py-1.5 px-3">70 cm</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3">M</td>
+                      <td className="py-1.5 px-3">52 cm</td>
+                      <td className="py-1.5 px-3">72 cm</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3">L</td>
+                      <td className="py-1.5 px-3">54 cm</td>
+                      <td className="py-1.5 px-3">74 cm</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3">XL</td>
+                      <td className="py-1.5 px-3">56 cm</td>
+                      <td className="py-1.5 px-3">76 cm</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           {/* Controles de configuración: talle, color y cantidad */}
