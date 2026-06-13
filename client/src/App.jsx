@@ -49,8 +49,6 @@ function App() {
         if (parsed && Array.isArray(parsed)) {
           // Descarto el localStorage si la estructura de stock es vieja (tipo número) para evitar fallos
           if (
-            parsed.length !== INITIAL_PRODUCTS.length ||
-            !parsed.some(p => p.name === "Argentina Scaloneta") ||
             parsed.some(p => typeof p.stock === 'number')
           ) {
             localStorage.removeItem('camisetas_products');
@@ -96,7 +94,7 @@ function App() {
         if (parsed && parsed.name !== 'Admin Valen') {
           email = parsed.email;
         }
-      } catch {}
+      } catch { }
     }
     if (!email) return [];
 
@@ -199,6 +197,44 @@ function App() {
   useEffect(() => {
     localStorage.setItem('camisetas_favorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  // Sincroniza el carrito automáticamente cuando cambia el stock o la lista de productos
+  useEffect(() => {
+    let changed = false;
+    const updatedCart = cart
+      .map((item) => {
+        const freshProduct = products.find((p) => p.id === item.product.id);
+        if (!freshProduct) {
+          changed = true;
+          return null; // Si fue eliminado, lo quitamos
+        }
+
+        const size = item.size;
+        const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
+          ? (freshProduct.stock[size] || 0)
+          : freshProduct.stock;
+
+        if (item.quantity > currentStock) {
+          changed = true;
+          if (currentStock <= 0) {
+            return null; // Si ya no hay stock en absoluto para ese talle, lo quitamos
+          }
+          // Si hay menos stock del solicitado, bajamos la cantidad
+          return {
+            ...item,
+            quantity: currentStock
+          };
+        }
+
+        return item;
+      })
+      .filter((item) => item !== null);
+
+    if (changed) {
+      setCart(updatedCart);
+    }
+  }, [products, cart]);
+
 
   // Alterna el estado de favorito de un producto
   const toggleFavorite = (productId) => {
@@ -348,6 +384,37 @@ function App() {
   // También descuenta el stock de cada producto comprado.
   const placeOrder = (shippingInfo, paymentMethod) => {
     if (enrichedCart.length === 0) return { success: false, message: 'El carrito está vacío' };
+
+    // Validar stock y existencia antes de procesar el pedido para evitar compras inválidas
+    for (const item of enrichedCart) {
+      const freshProduct = products.find((p) => p.id === item.product.id);
+      if (!freshProduct) {
+        return {
+          success: false,
+          message: `El producto "${item.product.name}" ya no está disponible en la tienda.`
+        };
+      }
+
+      const size = item.size;
+      const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
+        ? (freshProduct.stock[size] || 0)
+        : freshProduct.stock;
+
+      if (currentStock <= 0) {
+        return {
+          success: false,
+          message: `El producto "${freshProduct.name}" en talle ${size} se ha quedado sin stock.`
+        };
+      }
+
+      if (currentStock < item.quantity) {
+        return {
+          success: false,
+          message: `Solo quedan ${currentStock} unidades disponibles de "${freshProduct.name}" en talle ${size}.`
+        };
+      }
+    }
+
 
     const subtotal = enrichedCart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
     const taxes = subtotal * 0.08;
