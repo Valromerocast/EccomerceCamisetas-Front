@@ -4,7 +4,7 @@
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/product/ProductCard';
 
-function Home({ products = [], addToCart, favorites = [], toggleFavorite }) {
+function Home({ products = [], productsLoading = false, productsError = '', addToCart, favorites = [], toggleFavorite }) {
   // Tomo solo los primeros 3 productos marcados como "destacados" para la sección de la home
   const featuredProducts = products.filter((p) => p.featured).slice(0, 3);
 
@@ -128,6 +128,16 @@ function Home({ products = [], addToCart, favorites = [], toggleFavorite }) {
             Los mantos sagrados más aclamados por coleccionistas e hinchas.
           </p>
         </div>
+
+        {(productsLoading || productsError) && (
+          <div className={`border rounded-lg px-4 py-3 text-sm font-semibold ${
+            productsError
+              ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : 'bg-white border-neutral-200 text-neutral-500'
+          }`}>
+            {productsError || 'Cargando catalogo desde el backend...'}
+          </div>
+        )}
 
         {/* Grilla de 3 productos featured */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

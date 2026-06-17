@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductGrid from '../components/product/ProductGrid';
 
-function Catalog({ products = [], addToCart, favorites = [], toggleFavorite }) {
+function Catalog({ products = [], productsLoading = false, productsError = '', addToCart, favorites = [], toggleFavorite }) {
   const [searchParams] = useSearchParams();
 
   // Leo los parámetros de búsqueda y categoría desde la URL
@@ -107,6 +107,16 @@ function Catalog({ products = [], addToCart, favorites = [], toggleFavorite }) {
           {getCategoryDescription()}
         </p>
       </header>
+
+      {(productsLoading || productsError) && (
+        <div className={`border rounded-lg px-4 py-3 text-sm font-semibold ${
+          productsError
+            ? 'bg-amber-50 border-amber-200 text-amber-800'
+            : 'bg-white border-neutral-200 text-neutral-500'
+        }`}>
+          {productsError || 'Cargando catalogo desde el backend...'}
+        </div>
+      )}
 
       {/* Barra de herramientas: contador de artículos y selector de ordenamiento */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-300 pb-3 text-[10px] sm:text-xs font-bold text-neutral-500 tracking-wider uppercase gap-4">

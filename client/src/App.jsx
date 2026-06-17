@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { INITIAL_PRODUCTS } from './data/products'
+import { fetchProducts } from './services/api'
 
 // --- Componentes de layout ---
 import Layout from './components/layout/Layout'
@@ -62,6 +63,8 @@ function App() {
     }
     return INITIAL_PRODUCTS;
   });
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState('');
 
   // Usuario logueado actualmente. Limpio la sesión si el nombre era el del admin viejo
   // (antes se llamaba "Admin Valen", ahora es genérico "Admin")
@@ -175,6 +178,39 @@ function App() {
   useEffect(() => {
     localStorage.setItem('camisetas_products', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProductsFromApi() {
+      setProductsLoading(true);
+      setProductsError('');
+
+      try {
+        const apiProducts = await fetchProducts();
+
+        if (isMounted) {
+          setProducts(apiProducts);
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (isMounted) {
+          setProductsError('No se pudo cargar el catalogo desde el backend. Se muestran datos locales.');
+        }
+      } finally {
+        if (isMounted) {
+          setProductsLoading(false);
+        }
+      }
+    }
+
+    loadProductsFromApi();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -523,9 +559,9 @@ function App() {
       <Routes>
         {/* Rutas públicas: todas usan el Layout con Navbar y Footer */}
         <Route element={<Layout user={user} cartCount={enrichedCart.reduce((sum, item) => sum + item.quantity, 0)} logout={logout} />}>
-          <Route path="/" element={<Home products={products} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
-          <Route path="/catalog" element={<Catalog products={products} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
-          <Route path="/product/:id" element={<ProductDetail products={products} addToCart={addToCart} />} />
+          <Route path="/" element={<Home products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
+          <Route path="/catalog" element={<Catalog products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
+          <Route path="/product/:id" element={<ProductDetail products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} />} />
           <Route path="/cart" element={<Cart cart={enrichedCart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} clearCart={clearCart} />} />
           <Route path="/checkout" element={<Checkout cart={enrichedCart} user={user} placeOrder={placeOrder} />} />
           <Route path="/order-success" element={<OrderSuccess orders={orders} />} />

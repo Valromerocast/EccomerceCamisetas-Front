@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
-function ProductDetail({ products = [], addToCart }) {
+function ProductDetail({ products = [], productsLoading = false, productsError = '', addToCart }) {
   // Leo el usuario del localStorage para saber si es admin (igual que en ProductCard)
   const storedUser = localStorage.getItem('camisetas_user') ? JSON.parse(localStorage.getItem('camisetas_user')) : null;
   const isAdmin = storedUser && storedUser.role === 'admin';
@@ -40,11 +40,20 @@ function ProductDetail({ products = [], addToCart }) {
   }, [product]);
 
   // Si el producto no existe (ID inválido o fue eliminado), muestro un mensaje de error
+  if (productsLoading && !product) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4 text-antracita">
+        <h2 className="text-xl font-bold font-title">Cargando camiseta...</h2>
+        <p className="text-sm text-neutral-500">Estamos consultando el catalogo del backend.</p>
+      </main>
+    );
+  }
+
   if (!product) {
     return (
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4 text-antracita">
         <h2 className="text-xl font-bold font-title">Camiseta no encontrada</h2>
-        <p className="text-sm text-neutral-500">El producto solicitado no existe o ha sido retirado de nuestra tienda.</p>
+        <p className="text-sm text-neutral-500">{productsError || 'El producto solicitado no existe o ha sido retirado de nuestra tienda.'}</p>
         <Link to="/catalog" className="inline-block bg-primary hover:bg-primary/95 text-white font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-lg transition-colors cursor-pointer shadow-sm">
           Volver al catálogo
         </Link>
