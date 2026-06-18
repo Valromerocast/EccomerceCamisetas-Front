@@ -1,8 +1,18 @@
 // Vista del detalle de un producto
 // Muestra la imagen ampliada, descripción completa, selector de talle y color, y el botón de compra.
 // Si el usuario es admin, solo muestra la info sin los controles de compra.
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+
+function getStockForSize(product, size) {
+  if (!product) {
+    return 0;
+  }
+
+  return typeof product.stock === 'object' && product.stock !== null
+    ? (parseInt(product.stock[size], 10) || 0)
+    : parseInt(product.stock, 10) || 0;
+}
 
 function ProductDetail({ products = [], productsLoading = false, productsError = '', addToCart }) {
   // Leo el usuario del localStorage para saber si es admin (igual que en ProductCard)
@@ -14,9 +24,16 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
   const navigate = useNavigate();
   const product = products.find((p) => p.id === parseInt(id, 10));
 
-  // Estado local de las selecciones del usuario: talle y cantidad
-  const [selectedSize, setSelectedSize] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const defaultSize = product?.sizes.find((size) => getStockForSize(product, size) > 0)
+    || product?.sizes[0]
+    || '';
+  const [selection, setSelection] = useState({
+    productId: null,
+    size: '',
+    quantity: 1
+  });
+  const selectedSize = selection.productId === product?.id ? selection.size : defaultSize;
+  const quantity = selection.productId === product?.id ? selection.quantity : 1;
 
   // Calcular stock total y stock para el talle seleccionado
   const totalStock = product
@@ -25,19 +42,26 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
       : parseInt(product.stock, 10) || 0)
     : 0;
 
-  const currentSizeStock = product
-    ? (typeof product.stock === 'object' && product.stock !== null
-      ? (parseInt(product.stock[selectedSize], 10) || 0)
-      : parseInt(product.stock, 10) || 0)
-    : 0;
+  const currentSizeStock = getStockForSize(product, selectedSize);
 
-  // Cuando se carga el producto (o cambia), inicializo las selecciones con los primeros valores
-  useEffect(() => {
-    if (product) {
-      setSelectedSize(product.sizes[0] || '');
-      setQuantity(1);
-    }
-  }, [product]);
+  const selectSize = (size) => {
+    setSelection({
+      productId: product.id,
+      size,
+      quantity: 1
+    });
+  };
+
+  const changeQuantity = (update) => {
+    setSelection((current) => {
+      const currentQuantity = current.productId === product.id ? current.quantity : 1;
+      return {
+        productId: product.id,
+        size: selectedSize,
+        quantity: update(currentQuantity)
+      };
+    });
+  };
 
   // Si el producto no existe (ID inválido o fue eliminado), muestro un mensaje de error
   if (productsLoading && !product) {
@@ -77,9 +101,10 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
     }
   };
 
-  // Si la imagen del producto falla, muestro la imagen de fallback del producto o una genérica
+  // Si la imagen externa falla, retiro el producto del detalle.
   const handleImageError = (e) => {
-    e.target.src = product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.onerror = null;
+    navigate('/catalog', { replace: true });
   };
 
   return (
@@ -105,11 +130,11 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
       <section className="grid grid-cols-1 md:grid-cols-2 gap-10 bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-10 shadow-sm">
 
         {/* Columna izquierda: imagen del producto */}
-        <div className="relative aspect-[4/5] bg-neutral-100 rounded-xl overflow-hidden border border-neutral-200 self-start">
+        <div className="relative aspect-[4/5] bg-white rounded-xl overflow-hidden border border-neutral-200 self-start">
           <img
             src={product.image}
             alt={`Detalle de la camiseta ${product.name}`}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain p-4"
             onError={handleImageError}
           />
           {/* Badge de agotado sobre la imagen */}
@@ -200,19 +225,34 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
             <div className="space-y-2">
               <span className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase block">Talles Disponibles</span>
               <div className="flex gap-2.5">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${selectedSize === size
-                        ? 'bg-primary border-primary text-white shadow-sm'   // talle activo
-                        : 'bg-cream border-neutral-200 text-antracita hover:border-neutral-350'
-                      }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {product.sizes.map((size) => {
+                  const sizeStock = getStockForSize(product, size);
+
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => selectSize(size)}
+                      disabled={sizeStock === 0}
+                      aria-pressed={selectedSize === size}
+                      title={sizeStock === 0 ? `Talle ${size} sin stock` : `${sizeStock} disponibles`}
+                      className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-lg border transition-all ${sizeStock === 0
+                          ? 'bg-neutral-100 border-neutral-200 text-neutral-300 cursor-not-allowed line-through'
+                          : selectedSize === size
+                            ? 'bg-primary border-primary text-white shadow-sm'
+                            : 'bg-cream border-neutral-200 text-antracita hover:border-neutral-350 cursor-pointer'
+                        }`}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-xs text-neutral-500 font-semibold">
+                {currentSizeStock > 0
+                  ? `${currentSizeStock} unidades disponibles en talle ${selectedSize}`
+                  : 'No hay stock disponible en este talle'}
+              </p>
             </div>
 
 
@@ -224,7 +264,7 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
                 <div className="flex items-center space-x-3 bg-cream border border-neutral-200 px-3.5 py-2 rounded-lg self-start shadow-inner">
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}  // no permite bajar de 1
+                    onClick={() => changeQuantity((q) => Math.max(1, q - 1))}
                     className="text-neutral-500 hover:text-antracita text-lg font-bold w-6 text-center cursor-pointer"
                   >
                     -
@@ -232,7 +272,7 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
                   <span className="text-antracita text-sm font-bold w-6 text-center">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.min(currentSizeStock, q + 1))}  // no permite superar el stock
+                    onClick={() => changeQuantity((q) => Math.min(currentSizeStock, q + 1))}
                     disabled={quantity >= currentSizeStock}
                     className={`text-neutral-500 hover:text-antracita text-lg font-bold w-6 text-center cursor-pointer ${quantity >= currentSizeStock ? 'opacity-50' : ''
                       }`}

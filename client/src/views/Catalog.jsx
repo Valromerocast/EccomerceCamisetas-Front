@@ -1,204 +1,252 @@
-// Vista del catálogo de productos
-// Maneja el filtrado por búsqueda, categoría, talle y color, y el ordenamiento.
-// Los filtros se sincronizan con los parámetros de la URL para que se pueda compartir el link filtrado.
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import ProductFilters from '../components/product/ProductFilters';
 import ProductGrid from '../components/product/ProductGrid';
+import { fetchCatalogOptions, fetchProducts } from '../services/api';
 
-function Catalog({ products = [], productsLoading = false, productsError = '', addToCart, favorites = [], toggleFavorite }) {
-  const [searchParams] = useSearchParams();
+const DEFAULT_FILTERS = {
+  search: '',
+  category: '',
+  countryId: '',
+  genderId: '',
+  size: '',
+  minPrice: '',
+  maxPrice: '',
+  sortBy: 'default'
+};
 
-  // Leo los parámetros de búsqueda y categoría desde la URL
-  const urlQuery = searchParams.get('q') || '';
-  const categoryParam = searchParams.get('category') || '';
-
-  // Estado local con todos los filtros activos
-  const [filters, setFilters] = useState({
-    search: urlQuery,
-    category: categoryParam,
-    size: '',
-    sortBy: 'default'
+function Catalog({
+  products = [],
+  productsLoading = false,
+  productsError = '',
+  addToCart,
+  favorites = [],
+  toggleFavorite
+}) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = useMemo(() => ({
+    ...DEFAULT_FILTERS,
+    search: searchParams.get('q') || '',
+    category: searchParams.get('category') || '',
+    countryId: searchParams.get('country') || '',
+    genderId: searchParams.get('gender') || '',
+    size: searchParams.get('size') || '',
+    minPrice: searchParams.get('minPrice') || '',
+    maxPrice: searchParams.get('maxPrice') || '',
+    sortBy: searchParams.get('sort') || 'default'
+  }), [searchParams]);
+  const [catalogProducts, setCatalogProducts] = useState(products);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [options, setOptions] = useState({
+    countries: [],
+    types: [],
+    genders: [],
+    sizes: []
   });
 
-  // Cada vez que cambia la URL (ej: usuario hace una nueva búsqueda desde la Navbar),
-  // actualizo los filtros de búsqueda y categoría para reflejar el nuevo estado
+  const minimum = filters.minPrice === '' ? null : Number(filters.minPrice);
+  const maximum = filters.maxPrice === '' ? null : Number(filters.maxPrice);
+  const priceError = minimum !== null && maximum !== null && minimum > maximum
+    ? 'El precio minimo no puede ser mayor que el maximo.'
+    : '';
+
   useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      search: urlQuery,
-      category: categoryParam
-    }));
-  }, [urlQuery, categoryParam]);
+    const controller = new AbortController();
 
-  // Extraigo los valores únicos de categoría y talles de todos los productos
-  // para armar los selectores dinámicamente (sin hardcodear las opciones)
-  const categories = [...new Set(products.map((p) => p.category))];
-  const sizes = [...new Set(products.flatMap((p) => p.sizes))];
-
-  // Aplico todos los filtros activos al array de productos
-  const filteredProducts = products.filter((product) => {
-    // Coincidencia por texto de búsqueda (nombre o descripción, sin importar mayúsculas)
-    const matchesSearch =
-      !filters.search ||
-      product.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      product.description.toLowerCase().includes(filters.search.toLowerCase());
-
-    // Coincidencia por categoría o favoritos
-    let matchesCategory = true;
-    if (filters.category === 'favoritos') {
-      matchesCategory = favorites.includes(product.id);
-    } else if (filters.category) {
-      matchesCategory = product.category === filters.category;
+    async function loadOptions() {
+      try {
+        const result = await fetchCatalogOptions({ signal: controller.signal });
+        setOptions(result);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setCatalogError('No se pudieron cargar las opciones de filtro.');
+        }
+      } finally {
+        setOptionsLoading(false);
+      }
     }
 
-    // Coincidencia por talle seleccionado
-    const matchesSize = !filters.size || product.sizes.includes(filters.size);
+    loadOptions();
+    return () => controller.abort();
+  }, []);
 
-    return matchesSearch && matchesCategory && matchesSize;
-  });
-
-  // Ordeno los productos filtrados según la opción seleccionada en el selector
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (filters.sortBy) {
-      case 'price-asc':
-        return a.price - b.price;    // precio de menor a mayor
-      case 'price-desc':
-        return b.price - a.price;    // precio de mayor a menor
-      case 'rating':
-        return b.rating - a.rating;  // mejor puntuación primero
-      case 'name-asc':
-        return a.name.localeCompare(b.name);  // orden alfabético
-      default:
-        return 0;  // sin ordenamiento extra, mantiene el orden original
+  useEffect(() => {
+    if (optionsLoading) {
+      return undefined;
     }
-  });
 
-  // Título dinámico de la página según la categoría filtrada
-  const getCategoryTitle = () => {
-    if (filters.category === 'Titulares') return 'Camisetas Principales';
-    if (filters.category === 'Suplentes') return 'Camisetas Suplentes';
-    if (filters.category === 'favoritos') return 'Mis Camisetas Favoritas';
-    return 'Catálogo General';
+    if (priceError) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setCatalogLoading(true);
+      setCatalogError('');
+
+      const typeName = filters.category === 'Titulares'
+        ? 'Titular'
+        : filters.category === 'Suplentes'
+          ? 'Alternativa'
+          : '';
+      const type = options.types.find(
+        (item) => item.nombre.toLowerCase() === typeName.toLowerCase()
+      );
+
+      try {
+        const result = await fetchProducts({
+          search: filters.search,
+          countryId: filters.countryId,
+          typeId: type?.id || '',
+          genderId: filters.genderId,
+          size: filters.size,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          sortBy: filters.sortBy
+        }, { signal: controller.signal });
+
+        if (!controller.signal.aborted) {
+          setCatalogProducts(result);
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setCatalogProducts([]);
+          setCatalogError('No se pudo actualizar el catalogo.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setCatalogLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [filters, options.types, optionsLoading, priceError]);
+
+  const availableCountries = useMemo(() => {
+    const countryNames = new Set(products.map((product) => product.country));
+    return options.countries.filter((country) => countryNames.has(country.nombre));
+  }, [options.countries, products]);
+
+  const availableGenders = useMemo(() => {
+    const genderNames = new Set(products.map((product) => product.gender));
+    return options.genders.filter((gender) => genderNames.has(gender.nombre));
+  }, [options.genders, products]);
+
+  const availableSizes = useMemo(() => {
+    const sizeNames = new Set(products.flatMap((product) => product.sizes));
+    return options.sizes.filter((size) => sizeNames.has(size.nombre));
+  }, [options.sizes, products]);
+
+  const filteredCatalogProducts = priceError ? [] : catalogProducts;
+  const displayedProducts = filters.category === 'favoritos'
+    ? filteredCatalogProducts.filter((product) => favorites.includes(product.id))
+    : filteredCatalogProducts;
+
+  const syncUrl = (nextFilters) => {
+    const params = new URLSearchParams();
+
+    if (nextFilters.search.trim()) params.set('q', nextFilters.search.trim());
+    if (nextFilters.category) params.set('category', nextFilters.category);
+    if (nextFilters.countryId) params.set('country', nextFilters.countryId);
+    if (nextFilters.genderId) params.set('gender', nextFilters.genderId);
+    if (nextFilters.size) params.set('size', nextFilters.size);
+    if (nextFilters.minPrice !== '') params.set('minPrice', nextFilters.minPrice);
+    if (nextFilters.maxPrice !== '') params.set('maxPrice', nextFilters.maxPrice);
+    if (nextFilters.sortBy !== 'default') params.set('sort', nextFilters.sortBy);
+
+    setSearchParams(params, { replace: true });
   };
 
-  // Descripción dinámica de la página según la categoría filtrada
-  const getCategoryDescription = () => {
-    if (filters.category === 'Suplentes') {
-      return 'Descubre la elegancia de los colores alternativos. Diseños que desafían la tradición y capturan la esencia de cada nación fuera de casa.';
-    }
-    if (filters.category === 'Titulares') {
-      return 'Viste la gloria local. Diseños clásicos inspirados en la historia, la pasión y los colores tradicionales que definen a cada selección en casa.';
-    }
-    if (filters.category === 'favoritos') {
-      return 'Tus camisetas favoritas guardadas. Revisa y agrega al carrito tus elecciones preferidas.';
-    }
-    return 'Explora la colección oficial de camisetas de las selecciones nacionales para el Mundial 2026. Diseños exclusivos confeccionados con tejido transpirable premium.';
+  const handleFilterChange = (patch) => {
+    const nextFilters = { ...filters, ...patch };
+    syncUrl(nextFilters);
   };
+
+  const resetFilters = () => {
+    setSearchParams({}, { replace: true });
+  };
+
+  const title = filters.category === 'Titulares'
+    ? 'Camisetas Titulares'
+    : filters.category === 'Suplentes'
+      ? 'Camisetas Alternativas'
+      : filters.category === 'favoritos'
+        ? 'Mis Favoritas'
+        : 'Catalogo de Camisetas';
+
+  const loading = !priceError && (catalogLoading || (productsLoading && products.length === 0));
+  const error = priceError || catalogError || productsError;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 bg-cream text-antracita min-h-screen">
-
-      {/* Encabezado de la sección: título y descripción según categoría */}
-      <header className="space-y-3.5">
-        <h1 className="text-4xl font-bold text-antracita font-title tracking-tight">
-          {getCategoryTitle()}
-        </h1>
-        <p className="text-sm text-neutral-500 max-w-2xl leading-relaxed">
-          {getCategoryDescription()}
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 bg-cream text-antracita min-h-screen">
+      <header className="mb-8 space-y-2">
+        <h1 className="text-3xl sm:text-4xl font-bold font-title">{title}</h1>
+        <p className="text-sm text-neutral-500 max-w-2xl">
+          Filtra por seleccion, tipo, genero, talle disponible y precio.
         </p>
       </header>
 
-      {(productsLoading || productsError) && (
-        <div className={`border rounded-lg px-4 py-3 text-sm font-semibold ${
-          productsError
-            ? 'bg-amber-50 border-amber-200 text-amber-800'
-            : 'bg-white border-neutral-200 text-neutral-500'
-        }`}>
-          {productsError || 'Cargando catalogo desde el backend...'}
-        </div>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8 items-start">
+        <ProductFilters
+          filters={filters}
+          onChange={handleFilterChange}
+          onReset={resetFilters}
+          countries={availableCountries}
+          genders={availableGenders}
+          sizes={availableSizes}
+          disabled={optionsLoading}
+        />
 
-      {/* Barra de herramientas: contador de artículos y selector de ordenamiento */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-300 pb-3 text-[10px] sm:text-xs font-bold text-neutral-500 tracking-wider uppercase gap-4">
-        {/* Muestra cuántos productos coinciden con los filtros activos */}
-        <span>{sortedProducts.length} ARTÍCULOS ENCONTRADOS</span>
+        <section className="min-w-0 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-300 pb-3">
+            <span className="text-xs font-bold text-neutral-500 tracking-wider uppercase">
+              {loading ? 'Actualizando...' : `${displayedProducts.length} articulos encontrados`}
+            </span>
 
-        {/* Selectores de filtros y ordenamiento */}
-        <div className="flex flex-wrap items-center gap-6">
-          {/* Selector de categoría */}
-          <div className="flex items-center space-x-1.5 text-neutral-500 font-semibold normal-case">
-            <span>Categoría:</span>
-            <div className="relative inline-block">
+            <label className="flex items-center gap-2 text-xs text-neutral-500 font-semibold">
+              <span>Ordenar por</span>
               <select
-                id="categoryFilter"
-                value={filters.category}
-                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                className="appearance-none bg-transparent pr-5 py-0.5 font-bold text-antracita focus:outline-none cursor-pointer text-xs"
-              >
-                <option value="">Todas</option>
-                <option value="Titulares">Principales</option>
-                <option value="Suplentes">Suplentes</option>
-                <option value="favoritos">Favoritos ({favorites.length})</option>
-              </select>
-              {/* Flechita decorativa del select */}
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-antracita">
-                <svg className="w-3 h-3 stroke-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Selector de ordenamiento */}
-          <div className="flex items-center space-x-1.5 text-neutral-500 font-semibold normal-case">
-            <span>Ordenar por:</span>
-            <div className="relative inline-block">
-              <select
-                id="sortBy"
                 value={filters.sortBy}
-                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-                className="appearance-none bg-transparent pr-5 py-0.5 font-bold text-antracita focus:outline-none cursor-pointer text-xs"
+                onChange={(event) => handleFilterChange({ sortBy: event.target.value })}
+                className="bg-white border border-neutral-200 rounded-lg px-3 py-2 text-antracita font-bold focus:outline-none focus:border-primary cursor-pointer"
               >
                 <option value="default">Destacados</option>
-                <option value="price-asc">Precio: Menor a Mayor</option>
-                <option value="price-desc">Precio: Mayor a Menor</option>
+                <option value="price-asc">Precio: menor a mayor</option>
+                <option value="price-desc">Precio: mayor a menor</option>
                 <option value="name-asc">Nombre: A-Z</option>
+                <option value="name-desc">Nombre: Z-A</option>
               </select>
-              {/* Flechita decorativa del select */}
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-antracita">
-                <svg className="w-3 h-3 stroke-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            </label>
           </div>
-        </div>
-      </div>
 
-      {/* Área principal: chip de búsqueda activa + grilla de productos */}
-      <div className="space-y-6">
-        {/* Si hay una búsqueda activa, la muestro como un chip con botón para quitarla */}
-        {filters.search && (
-          <div className="flex items-center space-x-2 text-xs text-antracita/80 bg-white py-2.5 px-4 border border-neutral-200 rounded-lg shadow-sm">
-            <span>Resultado de búsqueda para: </span>
-            <strong className="text-primary font-bold">"{filters.search}"</strong>
-            <button
-              onClick={() => setFilters((prev) => ({ ...prev, search: '' }))}
-              className="ml-auto text-[9px] font-bold bg-cream hover:bg-neutral-200 text-antracita uppercase px-2 py-0.5 rounded cursor-pointer border border-neutral-250"
-            >
-              Quitar
-            </button>
-          </div>
-        )}
-        {/* Grilla con los productos ya filtrados y ordenados */}
-        <ProductGrid
-          products={sortedProducts}
-          addToCart={addToCart}
-          favorites={favorites}
-          toggleFavorite={toggleFavorite}
-        />
+          {error && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3 text-sm font-semibold">
+              {error}
+            </div>
+          )}
+
+          {loading && displayedProducts.length === 0 ? (
+            <div className="bg-white border border-neutral-200 rounded-lg px-4 py-16 text-center text-sm text-neutral-500">
+              Cargando camisetas...
+            </div>
+          ) : (
+            <ProductGrid
+              products={displayedProducts}
+              addToCart={addToCart}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              onClearFilters={resetFilters}
+            />
+          )}
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 

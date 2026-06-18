@@ -38,31 +38,8 @@ function App() {
 
   // ─── 1. Estado global ────────────────────────────────────────────────────
 
-  // Lista de productos: primero trato de leerla del localStorage para no perder
-  // los cambios del admin (stock editado, productos nuevos, etc.)
-  // Si los datos guardados son de una versión vieja o no tienen el producto de control,
-  // los descarto y vuelvo a los productos de fábrica.
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('camisetas_products');
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed)) {
-          // Descarto el localStorage si la estructura de stock es vieja (tipo número) para evitar fallos
-          if (
-            parsed.some(p => typeof p.stock === 'number')
-          ) {
-            localStorage.removeItem('camisetas_products');
-            return INITIAL_PRODUCTS;
-          }
-          return parsed;
-        }
-      } catch {
-        return INITIAL_PRODUCTS;
-      }
-    }
-    return INITIAL_PRODUCTS;
-  });
+  // El catalogo se carga desde el backend para evitar productos locales desactualizados.
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState('');
 
@@ -196,7 +173,8 @@ function App() {
         console.error(error);
 
         if (isMounted) {
-          setProductsError('No se pudo cargar el catalogo desde el backend. Se muestran datos locales.');
+          setProducts([]);
+          setProductsError('No se pudo cargar el catalogo desde el backend.');
         }
       } finally {
         if (isMounted) {
