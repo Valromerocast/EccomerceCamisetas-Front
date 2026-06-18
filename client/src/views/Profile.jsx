@@ -2,8 +2,16 @@
 // Muestra los datos de la cuenta y el historial de pedidos del usuario logueado.
 // Si no hay sesión activa, redirige al login.
 import { Navigate, Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectEnrichedOrders, selectUser } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
 
-function Profile({ user, logout, orders = [], ordersLoading = false, ordersError = '' }) {
+function Profile() {
+  const user = useSelector(selectUser);
+  const orders = useSelector(selectEnrichedOrders);
+  const ordersLoading = useSelector((state) => state.orders.loading);
+  const ordersError = useSelector((state) => state.orders.error);
+  const { logout } = useShopActions();
   // Si no hay usuario logueado, lo mando al login sin importar qué
   if (!user) {
     return <Navigate to="/login" replace />;

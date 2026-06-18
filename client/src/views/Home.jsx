@@ -3,8 +3,17 @@
 // Los productos destacados son los que tienen featured: true en el array de productos.
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/product/ProductCard';
+import { useSelector } from 'react-redux';
+import { selectFavorites, selectProducts, selectUser } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
 
-function Home({ user, products = [], productsLoading = false, productsError = '', addToCart, favorites = [], toggleFavorite }) {
+function Home() {
+  const user = useSelector(selectUser);
+  const products = useSelector(selectProducts);
+  const productsLoading = useSelector((state) => state.products.loading);
+  const productsError = useSelector((state) => state.products.error);
+  const favorites = useSelector(selectFavorites);
+  const { addToCart, toggleFavorite } = useShopActions();
   // Tomo solo los primeros 3 productos marcados como "destacados" para la sección de la home
   const featuredProducts = products.filter((p) => p.featured).slice(0, 3);
 

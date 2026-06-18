@@ -13,7 +13,8 @@ function CartItem({ item, disabled = false, updateCartQuantity, removeFromCart }
 
   // Si la imagen del producto no carga, muestro la imagen de fallback
   const handleImageError = (e) => {
-    e.target.src = product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = product.fallbackImage;
   };
 
   return (

@@ -4,6 +4,9 @@ import ProductFilters from '../components/product/ProductFilters';
 import ProductGrid from '../components/product/ProductGrid';
 import { fetchCatalogOptions, fetchProducts } from '../services/api';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
+import { useSelector } from 'react-redux';
+import { selectFavorites, selectProducts, selectUser } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -16,15 +19,13 @@ const DEFAULT_FILTERS = {
   sortBy: 'default'
 };
 
-function Catalog({
-  user,
-  products = [],
-  productsLoading = false,
-  productsError = '',
-  addToCart,
-  favorites = [],
-  toggleFavorite
-}) {
+function Catalog() {
+  const user = useSelector(selectUser);
+  const products = useSelector(selectProducts);
+  const productsLoading = useSelector((state) => state.products.loading);
+  const productsError = useSelector((state) => state.products.error);
+  const favorites = useSelector(selectFavorites);
+  const { addToCart, toggleFavorite } = useShopActions();
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => ({
     ...DEFAULT_FILTERS,

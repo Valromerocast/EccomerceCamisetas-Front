@@ -7,6 +7,9 @@ import { Input } from '../components/ui/Form';
 import PaymentMethods from '../components/checkout/PaymentMethods';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
+import { useSelector } from 'react-redux';
+import { selectEnrichedCart, selectUser } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
 
 // Helper functions for card validation
 const validateLuhn = (cardNumber) => {
@@ -82,7 +85,10 @@ const validateCvv = (cvv) => {
   return null;
 };
 
-function Checkout({ cart = [], user, placeOrder }) {
+function Checkout() {
+  const cart = useSelector(selectEnrichedCart);
+  const user = useSelector(selectUser);
+  const { placeOrder } = useShopActions();
   const navigate = useNavigate();
 
   // Estado del formulario de envío

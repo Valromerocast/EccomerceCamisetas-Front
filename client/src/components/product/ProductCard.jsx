@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNotification } from '../ui/useNotification';
 import LoadingIndicator from '../ui/LoadingIndicator';
+import { applyTeamCrestFallback } from '../../utils/teamCrest';
 
 function ProductCard({ user, product, addToCart, isFavorite = false, toggleFavorite }) {
   const { showNotification } = useNotification();
@@ -64,8 +65,7 @@ function ProductCard({ user, product, addToCart, isFavorite = false, toggleFavor
 
   // Si la URL no apunta a una imagen directa, mantengo el producto visible con fallback.
   const handleImageError = (e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src = product.fallbackImage || '/assets/shirt-white.svg';
+    applyTeamCrestFallback(e, product);
   };
 
   return (

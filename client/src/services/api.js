@@ -1,3 +1,5 @@
+import { getTeamCrest } from '../utils/teamCrest';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const TOKEN_STORAGE_KEY = 'camisetas_jwt';
 const SIZE_ORDER = ['S', 'M', 'L', 'XL'];
@@ -144,8 +146,8 @@ export function mapCartResponse(carrito) {
       id: Number(item.camisetaId),
       name: item.camiseta,
       price: Number(item.precioUnitario) || 0,
-      image: '/assets/shirt-white.svg',
-      fallbackImage: '/assets/shirt-white.svg',
+      image: getTeamCrest(item.pais || 'Seleccion'),
+      fallbackImage: getTeamCrest(item.pais || 'Seleccion'),
       stock: { [item.talle]: Number(item.cantidad) || 0 }
     }
   }));
@@ -239,8 +241,8 @@ export function mapOrderResponse(pedido, extra = {}) {
       id: Number(detalle.camisetaId),
       name: detalle.camisetaNombre,
       price: Number(detalle.precioUnitario) || 0,
-      image: '/assets/shirt-white.svg',
-      fallbackImage: '/assets/shirt-white.svg'
+      image: getTeamCrest(detalle.pais || 'Seleccion'),
+      fallbackImage: getTeamCrest(detalle.pais || 'Seleccion')
     }
   }));
 
@@ -297,7 +299,16 @@ function getCategory(camiseta) {
 
 function getImage(camiseta) {
   const image = camiseta.imagen?.trim();
-  return image && /^https?:\/\//i.test(image) ? image : null;
+  if (!image || !/^https?:\/\//i.test(image)) {
+    return null;
+  }
+
+  // Una publicación o perfil web no puede usarse como src de una etiqueta img.
+  if (/instagram\.com\/(p|reel|tv)\//i.test(image)) {
+    return null;
+  }
+
+  return image;
 }
 
 function mapVariants(variantes = []) {
@@ -334,6 +345,7 @@ function mapProduct(camiseta, variantes, index) {
   const image = getImage(camiseta);
   const country = camiseta.pais || 'Seleccion';
   const kit = camiseta.tipoCamiseta || 'KIT';
+  const fallbackImage = getTeamCrest(country);
 
   return {
     id: camiseta.id,
@@ -346,8 +358,8 @@ function mapProduct(camiseta, variantes, index) {
     gender: camiseta.genero || 'Unisex',
     kit,
     sizes: sizes.length > 0 ? sizes : ['S', 'M', 'L', 'XL'],
-    image,
-    fallbackImage: null,
+    image: image || fallbackImage,
+    fallbackImage,
     rating: 5,
     reviewsCount: 0,
     stock: sizes.length > 0 ? mapStockBySize(mappedVariants) : { S: 0, M: 0, L: 0, XL: 0 },
@@ -445,7 +457,7 @@ export async function fetchProducts(filters = {}, options = {}) {
     mapProduct(camiseta, variantsByProduct.get(Number(camiseta.id)) || [], index)
   ));
 
-  return products.filter((product) => product.active && product.image);
+  return products.filter((product) => product.active);
 }
 
 export function createProduct(payload) {

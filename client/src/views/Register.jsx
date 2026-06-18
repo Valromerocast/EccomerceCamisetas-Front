@@ -6,8 +6,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
+import { useShopActions } from '../store/useShopActions';
 
-function Register({ registerUser }) {
+function Register() {
+  const { registerUser } = useShopActions();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({

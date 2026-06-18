@@ -5,8 +5,13 @@ import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
 
-function Login({ user, login }) {
+function Login() {
+  const user = useSelector(selectUser);
+  const { login } = useShopActions();
   const navigate = useNavigate();
 
   // Estado del formulario: email, contraseña y checkbox de "recordarme"

@@ -6,15 +6,15 @@ import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
+import { useSelector } from 'react-redux';
+import { selectEnrichedCart } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
 
-function Cart({
-  cart = [],
-  cartLoading = false,
-  cartError = '',
-  updateCartQuantity,
-  removeFromCart,
-  clearCart
-}) {
+function Cart() {
+  const cart = useSelector(selectEnrichedCart);
+  const cartLoading = useSelector((state) => state.cart.loading);
+  const cartError = useSelector((state) => state.cart.error);
+  const { updateCartQuantity, removeFromCart, clearCart } = useShopActions();
   useScrollOnMessage(cartError);
 
   // Controlo si el carrito tiene artículos o está vacío para decidir qué renderizar

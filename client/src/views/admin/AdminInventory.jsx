@@ -5,8 +5,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNotification } from '../../components/ui/useNotification';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
+import { useSelector } from 'react-redux';
+import { selectProducts } from '../../store/selectors';
+import { useShopActions } from '../../store/useShopActions';
 
-function AdminInventory({ products = [], deleteProduct }) {
+function AdminInventory() {
+  const products = useSelector(selectProducts);
+  const { deleteProduct } = useShopActions();
   const { showConfirm, showNotification } = useNotification();
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -80,7 +85,8 @@ function AdminInventory({ products = [], deleteProduct }) {
 
   // Si la imagen del producto falla, muestro la imagen de fallback
   const handleImageError = (e, product) => {
-    e.target.src = product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = product.fallbackImage;
   };
 
   return (

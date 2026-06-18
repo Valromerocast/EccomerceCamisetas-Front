@@ -2,8 +2,11 @@
 // Se muestra después de que el usuario confirma el checkout.
 // Muestra el detalle del pedido, desglose de costos y fecha estimada de entrega.
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectEnrichedOrders } from '../store/selectors';
 
-function OrderSuccess({ orders = [] }) {
+function OrderSuccess() {
+  const orders = useSelector(selectEnrichedOrders);
   // El pedido más reciente siempre es el primero (el App los inserta al principio del array)
   const lastOrder = orders[0];
 
@@ -21,7 +24,8 @@ function OrderSuccess({ orders = [] }) {
 
   // Si la imagen de algún ítem no carga, muestro la imagen de fallback del producto
   const handleImageError = (e, item) => {
-    e.target.src = item.product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = item.product.fallbackImage;
   };
 
   // Calcula precios basados en la orden

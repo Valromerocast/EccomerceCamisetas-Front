@@ -3,8 +3,13 @@
 // Tiene una guarda de ruta: si el usuario no existe o no es admin, redirige al login.
 import { Outlet, Navigate } from 'react-router-dom';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/selectors';
+import { useShopActions } from '../../store/useShopActions';
 
-function AdminLayout({ user, logout }) {
+function AdminLayout() {
+  const user = useSelector(selectUser);
+  const { logout } = useShopActions();
   // Doble verificación de seguridad: el usuario debe existir Y tener rol 'admin'
   // Aunque App.jsx ya protege las rutas admin, esta guarda es una capa extra de seguridad
   if (!user || user.role !== 'admin') {

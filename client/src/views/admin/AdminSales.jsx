@@ -4,8 +4,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoadingIndicator from '../../components/ui/LoadingIndicator';
+import { useSelector } from 'react-redux';
+import { selectEnrichedOrders } from '../../store/selectors';
 
-function AdminSales({ orders = [], ordersLoading = false, ordersError = '' }) {
+function AdminSales() {
+  const orders = useSelector(selectEnrichedOrders);
+  const ordersLoading = useSelector((state) => state.orders.loading);
+  const ordersError = useSelector((state) => state.orders.error);
   // Estado del filtro de tabs: por defecto muestra todos los pedidos
   const [statusFilter, setStatusFilter] = useState('Todos');
 

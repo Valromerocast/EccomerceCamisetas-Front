@@ -5,12 +5,16 @@ import { createRoot } from 'react-dom/client'
 import './index.css'   // estilos globales de la app
 import App from './App.jsx'
 import NotificationProvider from './components/ui/NotificationProvider.jsx'
+import { Provider } from 'react-redux'
+import { store } from './store/store.js'
 
 // StrictMode activa advertencias extra en desarrollo para detectar problemas antes de que lleguen a producción
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <NotificationProvider>
-      <App />
-    </NotificationProvider>
+    <Provider store={store}>
+      <NotificationProvider>
+        <App />
+      </NotificationProvider>
+    </Provider>
   </StrictMode>,
 )

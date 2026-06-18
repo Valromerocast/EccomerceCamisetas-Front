@@ -1,7 +1,8 @@
 # Mundialista Store
 
 Frontend del e-commerce de camisetas de selecciones nacionales, desarrollado
-con React, Vite y Tailwind CSS. Consume la API REST del proyecto `marketplace`.
+con React, Redux Toolkit, Vite y Tailwind CSS. Consume la API REST del proyecto
+`marketplace`.
 
 ## Requisitos
 
@@ -56,6 +57,33 @@ Los productos, usuarios, favoritos, carritos, pedidos y stocks se guardan en el
 backend. El navegador conserva únicamente el token JWT necesario para restaurar
 la sesión.
 
+## Arquitectura Redux
+
+El estado global está organizado en `src/store`:
+
+```text
+store/
+├── store.js
+├── selectors.js
+├── useShopActions.js
+└── slices/
+    ├── authSlice.js
+    ├── productsSlice.js
+    ├── cartSlice.js
+    ├── favoritesSlice.js
+    └── ordersSlice.js
+```
+
+- `store.js` configura el store con Redux Toolkit.
+- Los slices separan autenticación, catálogo, carrito, favoritos y pedidos.
+- Las operaciones contra la API utilizan `createAsyncThunk`.
+- Los selectores calculan el carrito y los pedidos enriquecidos con los datos
+  actuales del catálogo.
+- Las vistas leen el estado mediante `useSelector`.
+- Las acciones se despachan desde `useShopActions`, que adapta los resultados
+  de Redux a los flujos visuales de la aplicación.
+- Los estados puramente visuales y formularios continúan usando `useState`.
+
 ## Rutas principales
 
 | Ruta | Vista |
@@ -100,6 +128,8 @@ npm run build
 ## Tecnologías
 
 - React 19.
+- Redux Toolkit 2.
+- React Redux 9.
 - React Router DOM 7.
 - Vite 8.
 - Tailwind CSS 4.

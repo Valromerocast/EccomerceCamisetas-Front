@@ -5,8 +5,13 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
 import LoadingIndicator from '../../components/ui/LoadingIndicator';
+import { useSelector } from 'react-redux';
+import { selectEnrichedOrders } from '../../store/selectors';
+import { useShopActions } from '../../store/useShopActions';
 
-function AdminOrderDetail({ orders = [], updateOrderStatus }) {
+function AdminOrderDetail() {
+  const orders = useSelector(selectEnrichedOrders);
+  const { updateOrderStatus } = useShopActions();
   const { id } = useParams();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [statusError, setStatusError] = useState('');
@@ -54,7 +59,8 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
 
   // Si la imagen de un artículo falla, muestro la imagen de fallback
   const handleImageError = (e, item) => {
-    e.target.src = item.product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = item.product.fallbackImage;
   };
 
   // Estilo del badge de estado en el encabezado

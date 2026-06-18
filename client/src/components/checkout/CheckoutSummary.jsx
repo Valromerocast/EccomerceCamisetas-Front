@@ -7,7 +7,8 @@ function CheckoutSummary({ cart }) {
   const total = subtotal + shippingCost;
 
   const handleImageError = (e, item) => {
-    e.target.src = item.product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = item.product.fallbackImage;
   };
 
   return (

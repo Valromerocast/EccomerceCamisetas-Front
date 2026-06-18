@@ -5,6 +5,10 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useNotification } from '../components/ui/useNotification';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
+import { useSelector } from 'react-redux';
+import { selectProducts, selectUser } from '../store/selectors';
+import { useShopActions } from '../store/useShopActions';
+import { applyTeamCrestFallback } from '../utils/teamCrest';
 
 function getStockForSize(product, size) {
   if (!product) {
@@ -16,7 +20,12 @@ function getStockForSize(product, size) {
     : parseInt(product.stock, 10) || 0;
 }
 
-function ProductDetail({ user, products = [], productsLoading = false, productsError = '', addToCart }) {
+function ProductDetail() {
+  const user = useSelector(selectUser);
+  const products = useSelector(selectProducts);
+  const productsLoading = useSelector((state) => state.products.loading);
+  const productsError = useSelector((state) => state.products.error);
+  const { addToCart } = useShopActions();
   const { showNotification } = useNotification();
   const [addingToCart, setAddingToCart] = useState(false);
   const canUseShoppingFeatures = !user || user.role === 'user';
@@ -112,8 +121,7 @@ function ProductDetail({ user, products = [], productsLoading = false, productsE
 
   // Si la imagen externa falla, mantengo el detalle con una imagen genérica.
   const handleImageError = (e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src = product.fallbackImage || '/assets/shirt-white.svg';
+    applyTeamCrestFallback(e, product);
   };
 
   return (

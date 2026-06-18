@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Input, Button } from '../../components/ui/Form';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
+import { useShopActions } from '../../store/useShopActions';
 
-function AdminUserAdd({ createUser }) {
+function AdminUserAdd() {
+  const { createUserAsAdmin: createUser } = useShopActions();
   // Estado del formulario con los datos del nuevo usuario
   const [formData, setFormData] = useState({
     name: '',

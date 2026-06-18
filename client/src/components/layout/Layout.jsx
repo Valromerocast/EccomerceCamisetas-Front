@@ -4,8 +4,15 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import { useSelector } from 'react-redux';
+import { selectCartCount, selectFavorites, selectUser } from '../../store/selectors';
+import { useShopActions } from '../../store/useShopActions';
 
-function Layout({ user, cartCount, favoriteCount, logout }) {
+function Layout() {
+  const user = useSelector(selectUser);
+  const cartCount = useSelector(selectCartCount);
+  const favoriteCount = useSelector(selectFavorites).length;
+  const { logout } = useShopActions();
   return (
     <div className="flex flex-col min-h-screen bg-cream text-antracita font-sans antialiased selection:bg-primary selection:text-white">
       {/* Barra de navegación fija arriba */}

@@ -3,6 +3,9 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Input, Select, Button } from '../../components/ui/Form';
 import { fetchCatalogOptions } from '../../services/api';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
+import { useSelector } from 'react-redux';
+import { selectProducts } from '../../store/selectors';
+import { useShopActions } from '../../store/useShopActions';
 
 function findOptionId(options, name) {
   return String(options.find((option) => option.nombre === name)?.id || '');
@@ -223,7 +226,9 @@ function ProductForm({ product, options, addProduct, updateProduct }) {
   );
 }
 
-function AdminProductEdit({ products = [], addProduct, updateProduct }) {
+function AdminProductEdit() {
+  const products = useSelector(selectProducts);
+  const { addProduct, updateProduct } = useShopActions();
   const { id } = useParams();
   const isEditMode = Boolean(id);
   const product = isEditMode ? products.find((item) => item.id === Number(id)) : null;
