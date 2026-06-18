@@ -10,7 +10,9 @@ function Home({ products = [], productsLoading = false, productsError = '', addT
 
   return (
     <div className="space-y-16 pb-20 bg-cream">
-
+    <Link to="/catalog?category=favoritos">
+    Mis Favoritas
+    </Link>
       {/* ── Hero Banner ──────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-b from-[#f0ece3]/80 to-cream py-20 border-b border-neutral-250/30">
         {/* Gradiente radial decorativo en la esquina superior derecha */}

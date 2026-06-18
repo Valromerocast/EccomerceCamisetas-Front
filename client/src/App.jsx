@@ -108,19 +108,10 @@ function App() {
     }
   };
 
-  // Favoritos: guarda los IDs de los productos marcados como favoritos
-  const [favorites, setFavorites] = useState(() => {
-    const saved = localStorage.getItem('camisetas_favorites');
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  // Favoritos: guardamos la lista por usuario para que no se mezclen entre sesiones.
+  const [favorites, setFavorites] = useState([]);
+
+  const getFavoritesKey = (email) => `camisetas_favorites_${email || 'guest'}`;
 
 
   // ─── 2. Sincronización con localStorage ──────────────────────────────────
@@ -209,11 +200,37 @@ function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('camisetas_favorites', JSON.stringify(favorites));
-  }, [favorites]);
+    if (!user?.email) {
+      setFavorites([]);
+      return;
+    }
+
+    const saved = localStorage.getItem(getFavoritesKey(user.email));
+    if (saved && saved !== 'null') {
+      try {
+        const parsed = JSON.parse(saved);
+        setFavorites(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setFavorites([]);
+      }
+    } else {
+      setFavorites([]);
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (user?.email) {
+      localStorage.setItem(getFavoritesKey(user.email), JSON.stringify(favorites));
+    }
+  }, [favorites, user?.email]);
 
   // Alterna el estado de favorito de un producto
   const toggleFavorite = (productId) => {
+    if (!user) {
+      alert('Debes iniciar sesión para guardar productos favoritos.');
+      return;
+    }
+
     setFavorites((prev) =>
       prev.includes(productId)
         ? prev.filter((id) => id !== productId)
@@ -579,7 +596,7 @@ function App() {
           <Route path="/login" element={<Login user={user} login={login} />} />
           <Route path="/register" element={<Register registerUser={registerUser} />} />
           <Route path="/register-success" element={<RegisterSuccess />} />
-          <Route path="/profile" element={<Profile user={user} logout={logout} orders={enrichedOrders} ordersLoading={ordersLoading} ordersError={ordersError} />} />
+          <Route path="/profile" element={<Profile user={user} logout={logout} orders={enrichedOrders} ordersLoading={ordersLoading} ordersError={ordersError} products={products} favorites={favorites} toggleFavorite={toggleFavorite} />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
