@@ -12,12 +12,12 @@ function AdminLayout({ user, logout }) {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-cream text-antracita font-sans antialiased">
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen lg:overflow-hidden bg-cream text-antracita font-sans antialiased">
       {/* Barra lateral con navegación del admin */}
       <AdminSidebar user={user} logout={logout} />
 
       {/* Contenido principal del panel — renderiza la vista admin activa con Outlet */}
-      <main className="flex-grow p-6 lg:p-10 w-full overflow-y-auto">
+      <main className="flex-grow min-w-0 p-6 lg:p-10 w-full lg:h-screen overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           <Outlet />
         </div>

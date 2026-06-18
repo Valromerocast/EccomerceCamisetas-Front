@@ -12,6 +12,15 @@ E-commerce de camisetas de fútbol de selecciones nacionales. Proyecto frontend 
 
 ### Pasos
 
+Primero iniciar el backend desde la carpeta `marketplace`:
+
+```powershell
+.\scripts\start-backend.ps1
+```
+
+Luego, en otra terminal, iniciar el frontend desde
+`EccomerceCamisetas-Front\client`:
+
 ```bash
 # 1. Instalar las dependencias
 npm install
@@ -28,8 +37,7 @@ La app queda disponible en `http://localhost:5173` (o el puerto que indique la t
 
 | Rol | Email | Contraseña |
 |---|---|---|
-| Admin | admin@tshirt.com | admin |
-| Usuario | test@tshirt.com | user |
+| Admin | admin@mail.com | Password123! |
 
 ---
 

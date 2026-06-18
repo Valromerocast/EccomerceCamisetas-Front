@@ -2,7 +2,7 @@
 // Acá vive todo el estado global de la tienda: productos, carrito, usuario, órdenes y lista de usuarios.
 // También defino todas las funciones que modifican ese estado y las paso a cada vista como props.
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { INITIAL_PRODUCTS } from './data/products'
 import {
@@ -14,6 +14,7 @@ import {
   createOrder,
   createProduct as createProductRequest,
   createProductVariant,
+  createUserAsAdmin as createUserAsAdminRequest,
   deleteCartItem,
   deleteFavorite,
   deleteProduct as deleteProductRequest,
@@ -58,8 +59,12 @@ import AdminProductEdit from './views/admin/AdminProductEdit'
 import AdminSales from './views/admin/AdminSales'
 import AdminUserAdd from './views/admin/AdminUserAdd'
 import AdminOrderDetail from './views/admin/AdminOrderDetail'
+import { useNotification } from './components/ui/useNotification'
+import ScrollToTop from './components/ui/ScrollToTop'
 
 function App() {
+  const { showNotification } = useNotification();
+  const orderCreationInProgress = useRef(false);
 
   // ─── 1. Estado global ────────────────────────────────────────────────────
 
@@ -223,8 +228,11 @@ function App() {
       return false;
     }
 
-    if (user.role === 'admin') {
-      alert('Los administradores no pueden guardar favoritos.');
+    if (user.role !== 'user') {
+      showNotification({
+        type: 'warning',
+        message: 'Esta cuenta no puede guardar favoritos.'
+      });
       return false;
     }
 
@@ -251,7 +259,10 @@ function App() {
           ? [...new Set([...currentFavorites, normalizedId])]
           : currentFavorites.filter((id) => id !== normalizedId)
       ));
-      alert(error.message || 'No se pudo actualizar el favorito.');
+      showNotification({
+        type: 'error',
+        message: error.message || 'No se pudo actualizar el favorito.'
+      });
       return false;
     }
   };
@@ -266,8 +277,11 @@ function App() {
       return false;
     }
 
-    if (user.role === 'admin') {
-      alert("Los administradores no pueden agregar productos al carrito.");
+    if (user.role !== 'user') {
+      showNotification({
+        type: 'warning',
+        message: 'Esta cuenta no puede agregar productos al carrito.'
+      });
       return false;
     }
 
@@ -275,7 +289,10 @@ function App() {
     const variant = product.variants?.find((item) => item.talle === size);
 
     if (!variant?.id) {
-      alert(`No se encontró la variante del talle ${size}.`);
+      showNotification({
+        type: 'error',
+        message: `No se encontró la variante del talle ${size}.`
+      });
       return false;
     }
 
@@ -289,7 +306,10 @@ function App() {
     } catch (error) {
       console.error('Error al agregar al carrito:', error);
       setCartError(error.message);
-      alert(error.message || 'No se pudo agregar el producto al carrito.');
+      showNotification({
+        type: 'error',
+        message: error.message || 'No se pudo agregar el producto al carrito.'
+      });
       return false;
     } finally {
       setCartLoading(false);
@@ -317,7 +337,10 @@ function App() {
     } catch (error) {
       console.error('Error al actualizar el carrito:', error);
       setCartError(error.message);
-      alert(error.message || 'No se pudo actualizar la cantidad.');
+      showNotification({
+        type: 'error',
+        message: error.message || 'No se pudo actualizar la cantidad.'
+      });
       return false;
     } finally {
       setCartLoading(false);
@@ -339,7 +362,10 @@ function App() {
     } catch (error) {
       console.error('Error al eliminar del carrito:', error);
       setCartError(error.message);
-      alert(error.message || 'No se pudo eliminar el producto.');
+      showNotification({
+        type: 'error',
+        message: error.message || 'No se pudo eliminar el producto.'
+      });
       return false;
     } finally {
       setCartLoading(false);
@@ -348,7 +374,7 @@ function App() {
 
   // Vacía el carrito persistido.
   const clearCart = async () => {
-    if (!user || user.role === 'admin') {
+    if (!user || user.role !== 'user') {
       setCart([]);
       return true;
     }
@@ -363,7 +389,10 @@ function App() {
     } catch (error) {
       console.error('Error al vaciar el carrito:', error);
       setCartError(error.message);
-      alert(error.message || 'No se pudo vaciar el carrito.');
+      showNotification({
+        type: 'error',
+        message: error.message || 'No se pudo vaciar el carrito.'
+      });
       return false;
     } finally {
       setCartLoading(false);
@@ -433,14 +462,38 @@ function App() {
     }
   };
 
+  // Crea un usuario desde el panel sin reemplazar la sesión ni el token del admin.
+  const createUserAsAdmin = async (payload) => {
+    try {
+      const createdUser = await createUserAsAdminRequest({
+        nombre: payload.nombre || payload.name || '',
+        apellido: payload.apellido || payload.lastName || payload.surname || '',
+        email: payload.email || '',
+        password: payload.password || '',
+        rol: 'USER'
+      });
+
+      return { success: true, user: createdUser };
+    } catch (error) {
+      console.error('Error al crear usuario desde admin:', error);
+      return { success: false, message: error.message || 'No se pudo crear el usuario.' };
+    }
+  };
+
 
   // ─── 5. Funciones de órdenes ──────────────────────────────────────────────
 
   // El backend valida stock, crea el pedido, descuenta existencias y vacía el carrito.
   const placeOrder = async (shippingInfo, paymentMethod) => {
+    if (orderCreationInProgress.current) {
+      return { success: false, message: 'El pedido ya se está procesando.' };
+    }
+
     if (enrichedCart.length === 0) {
       return { success: false, message: 'El carrito está vacío.' };
     }
+
+    orderCreationInProgress.current = true;
 
     try {
       const newOrder = await createOrder({
@@ -448,11 +501,45 @@ function App() {
         shippingInfo,
         paymentMethod
       });
-      const refreshedProducts = await fetchProducts();
 
       setOrders((currentOrders) => [newOrder, ...currentOrders]);
       setCart([]);
-      setProducts(refreshedProducts);
+      setProducts((currentProducts) => currentProducts.map((product) => {
+        const purchasedItems = newOrder.items.filter((item) => item.productId === product.id);
+
+        if (purchasedItems.length === 0) {
+          return product;
+        }
+
+        const nextStock = { ...product.stock };
+        const nextVariants = product.variants?.map((variant) => {
+          const purchasedQuantity = purchasedItems
+            .filter((item) => item.variantId === variant.id)
+            .reduce((total, item) => total + item.quantity, 0);
+
+          if (purchasedQuantity === 0) {
+            return variant;
+          }
+
+          const stock = Math.max(0, variant.stock - purchasedQuantity);
+          nextStock[variant.talle] = stock;
+          return { ...variant, stock };
+        });
+
+        return {
+          ...product,
+          stock: nextStock,
+          variants: nextVariants
+        };
+      }));
+
+      try {
+        const refreshedProducts = await fetchProducts();
+        setProducts(refreshedProducts);
+      } catch (refreshError) {
+        console.error('El pedido se creó, pero no se pudo refrescar el catálogo:', refreshError);
+      }
+
       return { success: true, orderId: newOrder.id };
     } catch (error) {
       console.error('Error al crear el pedido:', error);
@@ -460,6 +547,8 @@ function App() {
         success: false,
         message: error.message || 'No se pudo crear el pedido.'
       };
+    } finally {
+      orderCreationInProgress.current = false;
     }
   };
 
@@ -551,6 +640,10 @@ function App() {
       return { success: false, message: 'Pedido no encontrado.' };
     }
 
+    if (order.status === 'Cancelado') {
+      return { success: false, message: 'Un pedido cancelado no puede cambiar de estado.' };
+    }
+
     try {
       const updatedOrder = await changeOrderStatus(order.backendId, newStatus);
       setOrders((currentOrders) =>
@@ -565,6 +658,19 @@ function App() {
             : item
         ))
       );
+
+      if (updatedOrder.status === 'Cancelado') {
+        try {
+          await refreshProducts();
+        } catch (refreshError) {
+          console.error('El pedido se canceló, pero no se pudo refrescar el stock:', refreshError);
+          return {
+            success: true,
+            message: 'El pedido se canceló y el stock fue repuesto, pero no pudo refrescarse en pantalla.'
+          };
+        }
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Error al actualizar el pedido:', error);
@@ -607,12 +713,13 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         {/* Rutas públicas: todas usan el Layout con Navbar y Footer */}
-        <Route element={<Layout user={user} cartCount={enrichedCart.reduce((sum, item) => sum + item.quantity, 0)} logout={logout} />}>
-          <Route path="/" element={<Home products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
-          <Route path="/catalog" element={<Catalog products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
-          <Route path="/product/:id" element={<ProductDetail products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} />} />
+        <Route element={<Layout user={user} cartCount={enrichedCart.reduce((sum, item) => sum + item.quantity, 0)} favoriteCount={favorites.length} logout={logout} />}>
+          <Route path="/" element={<Home user={user} products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
+          <Route path="/catalog" element={<Catalog user={user} products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
+          <Route path="/product/:id" element={<ProductDetail user={user} products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} />} />
           <Route path="/cart" element={<Cart cart={enrichedCart} cartLoading={cartLoading} cartError={cartError} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} clearCart={clearCart} />} />
           <Route path="/checkout" element={<Checkout cart={enrichedCart} user={user} placeOrder={placeOrder} />} />
           <Route path="/order-success" element={<OrderSuccess orders={enrichedOrders} />} />
@@ -644,7 +751,7 @@ function App() {
           <Route path="products/new" element={<AdminProductEdit addProduct={addProduct} />} />
           <Route path="products/:id/edit" element={<AdminProductEdit products={products} updateProduct={updateProduct} />} />
           <Route path="sales" element={<AdminSales orders={enrichedOrders} ordersLoading={ordersLoading} ordersError={ordersError} />} />
-          <Route path="users/add" element={<AdminUserAdd registerUser={registerUser} />} />
+          <Route path="users/add" element={<AdminUserAdd createUser={createUserAsAdmin} />} />
           <Route path="orders/:id" element={<AdminOrderDetail orders={enrichedOrders} updateOrderStatus={updateOrderStatus} />} />
         </Route>
       </Routes>

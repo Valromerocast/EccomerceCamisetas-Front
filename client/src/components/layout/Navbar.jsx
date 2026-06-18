@@ -1,9 +1,9 @@
 // Barra de navegación fija (sticky) de la tienda
 // Manejo el estado del menú mobile, el buscador y el logout desde acá
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
-function Navbar({ user, cartCount, logout }) {
+function Navbar({ user, cartCount, favoriteCount = 0, logout }) {
   // Control del menú hamburguesa en pantallas chicas
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -11,6 +11,12 @@ function Navbar({ user, cartCount, logout }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const isBuyer = user?.role === 'user';
+  const canUseShoppingFeatures = !user || isBuyer;
+  const isFavoritesView = location.pathname === '/catalog'
+    && new URLSearchParams(location.search).get('category') === 'favoritos';
+  const isCatalogView = location.pathname === '/catalog' && !isFavoritesView;
 
   // Cuando el usuario aprieta Enter o el botón de búsqueda, lo mando al catálogo con el parámetro q=
   const handleSearchSubmit = (e) => {
@@ -53,16 +59,14 @@ function Navbar({ user, cartCount, logout }) {
             >
               Inicio
             </NavLink>
-            <NavLink
+            <Link
               to="/catalog"
-              className={({ isActive }) =>
-                `text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
-                  isActive ? 'text-primary' : 'text-antracita/70 hover:text-primary'
-                }`
-              }
+              className={`text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
+                isCatalogView ? 'text-primary' : 'text-antracita/70 hover:text-primary'
+              }`}
             >
               Camisetas
-            </NavLink>
+            </Link>
             <NavLink
               to="/contact"
               className={({ isActive }) =>
@@ -73,18 +77,21 @@ function Navbar({ user, cartCount, logout }) {
             >
               Ayuda
             </NavLink>
-            {user && user.role !== 'admin' && (
-            <NavLink
-              to="/catalog?category=favoritos"
-              className={({ isActive }) =>
-                `text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
-                  isActive ? 'text-primary' : 'text-antracita/70 hover:text-primary'
-                }`
-              }
-            >
-              Favoritos
-            </NavLink>
-)}
+            {isBuyer && (
+              <Link
+                to="/catalog?category=favoritos"
+                className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
+                  isFavoritesView ? 'text-primary' : 'text-antracita/70 hover:text-primary'
+                }`}
+              >
+                <span>Favoritos</span>
+                {favoriteCount > 0 && (
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] leading-none text-white">
+                    {favoriteCount}
+                  </span>
+                )}
+              </Link>
+            )}
           </div>
 
           {/* Buscador + íconos de perfil y carrito — solo en desktop */}
@@ -138,7 +145,7 @@ function Navbar({ user, cartCount, logout }) {
             )}
 
             {/* Ícono del carrito con badge de cantidad — se oculta para el admin porque no tiene carrito */}
-            {(!user || user.role !== 'admin') && (
+            {canUseShoppingFeatures && (
               <Link to="/cart" className="relative p-1.5 text-antracita/75 hover:text-primary transition-colors duration-200 flex items-center justify-center" aria-label="Carrito de compras">
                 <img src="/assets/cart.svg" alt="Carrito de compras" className="w-5 h-5 object-contain" />
                 {/* Badge rojo con el número de artículos — solo aparece si hay algo en el carrito */}
@@ -153,7 +160,7 @@ function Navbar({ user, cartCount, logout }) {
 
           {/* Controles del menú mobile: carrito + botón hamburguesa */}
           <div className="md:hidden flex items-center space-x-4">
-            {(!user || user.role !== 'admin') && (
+            {canUseShoppingFeatures && (
               <Link to="/cart" className="relative p-1.5 text-antracita/75 hover:text-primary transition-colors" aria-label="Carrito de compras">
                 <img src="/assets/cart.svg" alt="Carrito de compras" className="w-6 h-6 object-contain inline-block" />
                 {cartCount > 0 && (
@@ -226,6 +233,22 @@ function Navbar({ user, cartCount, logout }) {
             >
               Camisetas
             </Link>
+            {isBuyer && (
+              <Link
+                to="/catalog?category=favoritos"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between py-1.5 text-sm font-bold uppercase tracking-wider border-b border-neutral-100 ${
+                  isFavoritesView ? 'text-primary' : 'text-antracita/80 hover:text-primary'
+                }`}
+              >
+                <span>Favoritos</span>
+                {favoriteCount > 0 && (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-white">
+                    {favoriteCount}
+                  </span>
+                )}
+              </Link>
+            )}
             <Link
               to="/contact"
               onClick={() => setMobileMenuOpen(false)}

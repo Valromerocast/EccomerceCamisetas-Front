@@ -3,23 +3,44 @@
 // Desde acá el admin puede editar o eliminar cualquier producto, y agregar uno nuevo.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useNotification } from '../../components/ui/useNotification';
+import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
 
 function AdminInventory({ products = [], deleteProduct }) {
+  const { showConfirm, showNotification } = useNotification();
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  useScrollOnMessage(deleteError);
 
   // Pide confirmación antes de eliminar un producto (por seguridad)
   const handleDelete = async (id, name) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar la camiseta "${name}" del catálogo?`)) {
-      setDeletingId(id);
-      setDeleteError('');
-      const result = await deleteProduct(id);
-      setDeletingId(null);
+    const confirmed = await showConfirm({
+      title: 'Eliminar producto',
+      message: `¿Estás seguro de que deseas eliminar la camiseta "${name}" del catálogo?`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar'
+    });
 
-      if (!result.success) {
-        setDeleteError(result.message || 'No se pudo eliminar el producto.');
-      }
+    if (!confirmed) {
+      return;
     }
+
+    setDeletingId(id);
+    setDeleteError('');
+    const result = await deleteProduct(id);
+    setDeletingId(null);
+
+    if (!result.success) {
+      const message = result.message || 'No se pudo eliminar el producto.';
+      setDeleteError(message);
+      showNotification({ type: 'error', message });
+      return;
+    }
+
+    showNotification({
+      type: 'success',
+      message: `"${name}" se eliminó correctamente del catálogo.`
+    });
   };
 
   // Calcula una distribución aproximada del stock por talle a partir del stock total

@@ -3,15 +3,19 @@
 // El admin puede cambiar el estado del pedido desde un botón desplegable interactivo.
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
+import LoadingIndicator from '../../components/ui/LoadingIndicator';
 
 function AdminOrderDetail({ orders = [], updateOrderStatus }) {
   const { id } = useParams();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  useScrollOnMessage(statusError);
 
   // Busco el pedido por ID en el array de órdenes
   const order = orders.find((o) => o.id === id);
+  const isCancelled = order?.status === 'Cancelado';
 
   // Si no existe el pedido (ID inválido o borrado), muestro un mensaje y link para volver
   if (!order) {
@@ -31,6 +35,11 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
 
   // Actualiza el estado del pedido al seleccionar una opción del dropdown
   const handleStatusChange = async (newStatus) => {
+    if (isCancelled) {
+      setStatusError('Un pedido cancelado no puede cambiar de estado.');
+      return;
+    }
+
     setUpdatingStatus(true);
     setStatusError('');
 
@@ -173,10 +182,16 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            disabled={updatingStatus}
+            disabled={updatingStatus || isCancelled}
             className="bg-[#325B42] hover:bg-[#284935] text-white font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-lg shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <span>{updatingStatus ? 'Actualizando...' : 'Cambiar Estado'}</span>
+            <span>
+              {updatingStatus
+                ? <LoadingIndicator label="Actualizando..." compact />
+                : isCancelled
+                  ? 'Pedido cancelado'
+                  : 'Cambiar Estado'}
+            </span>
             <svg className={`w-3.5 h-3.5 transition-transform duration-205 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
             </svg>

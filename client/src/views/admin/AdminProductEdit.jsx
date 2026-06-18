@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Input, Select, Button } from '../../components/ui/Form';
 import { fetchCatalogOptions } from '../../services/api';
+import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
 
 function findOptionId(options, name) {
   return String(options.find((option) => option.nombre === name)?.id || '');
@@ -34,6 +35,7 @@ function ProductForm({ product, options, addProduct, updateProduct }) {
   const [formData, setFormData] = useState(() => buildInitialForm(product, options));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  useScrollOnMessage(error);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;

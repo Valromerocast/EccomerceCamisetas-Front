@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
+import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 
 function Register({ registerUser }) {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ function Register({ registerUser }) {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  useScrollOnMessage(error);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

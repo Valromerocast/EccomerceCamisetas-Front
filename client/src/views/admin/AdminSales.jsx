@@ -3,6 +3,7 @@
 // y la tabla de todos los pedidos con filtrado por estado.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import LoadingIndicator from '../../components/ui/LoadingIndicator';
 
 function AdminSales({ orders = [], ordersLoading = false, ordersError = '' }) {
   // Estado del filtro de tabs: por defecto muestra todos los pedidos
@@ -120,7 +121,9 @@ function AdminSales({ orders = [], ordersLoading = false, ordersError = '' }) {
         {/* Si no hay pedidos con el filtro activo, muestro un mensaje */}
         {ordersLoading ? (
           <div className="text-center py-16 bg-white border border-neutral-200 rounded-xl shadow-sm">
-            <p className="text-sm text-neutral-500">Cargando pedidos...</p>
+            <p className="text-sm text-neutral-500">
+              <LoadingIndicator label="Cargando pedidos..." />
+            </p>
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="text-center py-16 bg-white border border-neutral-200 rounded-xl shadow-sm">

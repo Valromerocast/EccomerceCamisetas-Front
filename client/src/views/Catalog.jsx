@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import ProductFilters from '../components/product/ProductFilters';
 import ProductGrid from '../components/product/ProductGrid';
 import { fetchCatalogOptions, fetchProducts } from '../services/api';
+import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -16,6 +17,7 @@ const DEFAULT_FILTERS = {
 };
 
 function Catalog({
+  user,
   products = [],
   productsLoading = false,
   productsError = '',
@@ -133,10 +135,7 @@ function Catalog({
     return options.countries.filter((country) => countryNames.has(country.nombre));
   }, [options.countries, products]);
 
-  const availableGenders = useMemo(() => {
-    const genderNames = new Set(products.map((product) => product.gender));
-    return options.genders.filter((gender) => genderNames.has(gender.nombre));
-  }, [options.genders, products]);
+  const availableGenders = options.genders;
 
   const availableSizes = useMemo(() => {
     const sizeNames = new Set(products.flatMap((product) => product.sizes));
@@ -193,6 +192,11 @@ function Catalog({
 
   const loading = !priceError && (catalogLoading || (productsLoading && products.length === 0));
   const error = priceError || catalogError || productsError;
+  useScrollOnMessage(error);
+
+  if (filters.category === 'favoritos' && user?.role !== 'user') {
+    return <Navigate to={user ? '/catalog' : '/login'} replace />;
+  }
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 bg-cream text-antracita min-h-screen">
@@ -256,6 +260,7 @@ function Catalog({
             </div>
           ) : (
             <ProductGrid
+              user={user}
               products={displayedProducts}
               addToCart={addToCart}
               favorites={favorites}

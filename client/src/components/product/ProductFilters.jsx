@@ -54,7 +54,6 @@ function ProductFilters({
           <option value="">Todos</option>
           <option value="Titulares">Titulares</option>
           <option value="Suplentes">Alternativas</option>
-          <option value="favoritos">Favoritos</option>
         </select>
       </div>
 

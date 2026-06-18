@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Input, Select, Button } from '../components/ui/Form';
+import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ function Contact() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  useScrollOnMessage(error || (submitted ? 'success' : ''));
 
   const handleChange = (e) => {
     const { name, value } = e.target;

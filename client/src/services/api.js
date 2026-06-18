@@ -73,6 +73,11 @@ function saveAuthToken(token) {
 
 function mapAuthenticatedUser(usuario) {
   const normalizedRole = String(usuario?.rol || usuario?.role || '').toLowerCase();
+  const role = normalizedRole.includes('admin')
+    ? 'admin'
+    : normalizedRole.includes('seller') || normalizedRole.includes('vendedor')
+      ? 'seller'
+      : 'user';
 
   return {
     id: usuario?.id,
@@ -82,7 +87,7 @@ function mapAuthenticatedUser(usuario) {
     direccion: usuario?.direccion || '',
     telefono: usuario?.telefono || '',
     active: usuario?.activo !== false,
-    role: normalizedRole.includes('admin') ? 'admin' : 'user'
+    role
   };
 }
 
@@ -114,6 +119,13 @@ export function loginUser(email, password) {
 
 export function registerUser(payload) {
   return authenticate('/api/auth/register', payload);
+}
+
+export function createUserAsAdmin(payload) {
+  return request('/api/usuarios', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export function mapCartResponse(carrito) {
@@ -389,7 +401,18 @@ export async function fetchCatalogOptions(options = {}) {
   return {
     countries: uniqueByName(countries),
     types: uniqueByName(types),
-    genders: uniqueByName(genders),
+    genders: uniqueByName(
+      [...genders]
+        .sort((a, b) => {
+          const aCanonical = a.nombre?.toLowerCase() === 'masculino' ? 0 : 1;
+          const bCanonical = b.nombre?.toLowerCase() === 'masculino' ? 0 : 1;
+          return aCanonical - bCanonical;
+        })
+        .map((gender) => ({
+          ...gender,
+          nombre: gender.nombre?.toLowerCase() === 'hombre' ? 'Masculino' : gender.nombre
+        }))
+    ),
     sizes: sortSizes(uniqueByName(sizes))
   };
 }

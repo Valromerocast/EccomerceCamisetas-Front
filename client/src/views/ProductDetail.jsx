@@ -3,6 +3,8 @@
 // Si el usuario es admin, solo muestra la info sin los controles de compra.
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useNotification } from '../components/ui/useNotification';
+import LoadingIndicator from '../components/ui/LoadingIndicator';
 
 function getStockForSize(product, size) {
   if (!product) {
@@ -14,10 +16,10 @@ function getStockForSize(product, size) {
     : parseInt(product.stock, 10) || 0;
 }
 
-function ProductDetail({ products = [], productsLoading = false, productsError = '', addToCart }) {
-  // Leo el usuario del localStorage para saber si es admin (igual que en ProductCard)
-  const storedUser = localStorage.getItem('camisetas_user') ? JSON.parse(localStorage.getItem('camisetas_user')) : null;
-  const isAdmin = storedUser && storedUser.role === 'admin';
+function ProductDetail({ user, products = [], productsLoading = false, productsError = '', addToCart }) {
+  const { showNotification } = useNotification();
+  const [addingToCart, setAddingToCart] = useState(false);
+  const canUseShoppingFeatures = !user || user.role === 'user';
 
   // Obtengo el id de la URL con useParams y busco el producto correspondiente
   const { id } = useParams();
@@ -94,9 +96,17 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
   // Agrego el producto al carrito con la talla y cantidad seleccionados
   const handleAddToCart = async () => {
     if (currentSizeStock === 0) return;  // no hago nada si está agotado
-    const success = await addToCart(product, quantity, selectedSize);
-    if (success) {
-      alert(`¡"${product.name}" (${selectedSize}) agregada al carrito!`);
+    setAddingToCart(true);
+    try {
+      const success = await addToCart(product, quantity, selectedSize);
+      if (success) {
+        showNotification({
+          type: 'success',
+          message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
+        });
+      }
+    } finally {
+      setAddingToCart(false);
     }
   };
 
@@ -257,7 +267,7 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
 
 
             {/* Selector de cantidad y botón de compra — solo para usuarios normales, no para el admin */}
-            {!isAdmin ? (
+            {canUseShoppingFeatures ? (
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 {/* Control de cantidad: − número + */}
                 <div className="flex items-center space-x-3 bg-cream border border-neutral-200 px-3.5 py-2 rounded-lg self-start shadow-inner">
@@ -284,13 +294,17 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
                 <div className="flex-grow">
                   <button
                     onClick={handleAddToCart}
-                    disabled={currentSizeStock === 0}
+                    disabled={currentSizeStock === 0 || addingToCart}
                     className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-6 rounded-lg shadow-md transition-all duration-200 cursor-pointer ${currentSizeStock === 0
                         ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none'
                         : 'bg-primary hover:bg-primary/95 text-white shadow-primary/10 hover:shadow-primary/20'
                       }`}
                   >
-                    {currentSizeStock === 0 ? 'Sin Stock en este Talle' : 'Agregar al Carrito'}
+                    {currentSizeStock === 0
+                      ? 'Sin Stock en este Talle'
+                      : addingToCart
+                        ? <LoadingIndicator label="Agregando..." compact />
+                        : 'Agregar al Carrito'}
                   </button>
                 </div>
               </div>

@@ -4,8 +4,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Input, Button } from '../../components/ui/Form';
+import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
 
-function AdminUserAdd({ registerUser }) {
+function AdminUserAdd({ createUser }) {
   // Estado del formulario con los datos del nuevo usuario
   const [formData, setFormData] = useState({
     name: '',
@@ -16,6 +17,7 @@ function AdminUserAdd({ registerUser }) {
 
   // Mensaje de resultado: puede ser éxito o error
   const [message, setMessage] = useState({ type: '', text: '' });
+  useScrollOnMessage(message.text);
 
   // Handler para actualizar cualquier campo del formulario
   const handleChange = (e) => {
@@ -61,12 +63,11 @@ function AdminUserAdd({ registerUser }) {
       return;
     }
 
-    const res = await registerUser({
+    const res = await createUser({
       nombre: trimmedName,
       apellido: trimmedApellido,
       email: trimmedEmail,
-      password: formData.password,
-      role: 'user'
+      password: formData.password
     });
 
     if (res.success) {

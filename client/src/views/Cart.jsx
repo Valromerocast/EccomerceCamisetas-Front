@@ -4,6 +4,8 @@
 import { Link } from 'react-router-dom';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
+import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
+import LoadingIndicator from '../components/ui/LoadingIndicator';
 
 function Cart({
   cart = [],
@@ -13,6 +15,8 @@ function Cart({
   removeFromCart,
   clearCart
 }) {
+  useScrollOnMessage(cartError);
+
   // Controlo si el carrito tiene artículos o está vacío para decidir qué renderizar
   const isCartEmpty = cart.length === 0;
 
@@ -35,7 +39,9 @@ function Cart({
       )}
 
       {cartLoading && (
-        <p className="text-xs font-semibold text-neutral-500">Actualizando carrito...</p>
+        <p className="text-xs font-semibold text-neutral-500">
+          <LoadingIndicator label="Actualizando carrito..." compact />
+        </p>
       )}
 
       {isCartEmpty ? (

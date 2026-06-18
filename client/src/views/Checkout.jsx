@@ -1,11 +1,12 @@
 // Vista del checkout (finalizar compra)
 // Si el carrito está vacío, redirige de vuelta al carrito automáticamente.
 // Muestra el formulario de envío, el selector de método de pago y el resumen del pedido.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Input } from '../components/ui/Form';
 import PaymentMethods from '../components/checkout/PaymentMethods';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
+import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 
 // Helper functions for card validation
 const validateLuhn = (cardNumber) => {
@@ -112,6 +113,8 @@ function Checkout({ cart = [], user, placeOrder }) {
   // Mensaje de error de validación del formulario
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  useScrollOnMessage(error);
 
   // Los hooks deben ejecutarse siempre en el mismo orden.
   if (cart.length === 0) {
@@ -127,6 +130,11 @@ function Checkout({ cart = [], user, placeOrder }) {
   // Valida y envía el formulario para crear la orden
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (submittingRef.current) {
+      return;
+    }
+
     setError('');
     setCardErrors({});
 
@@ -217,6 +225,7 @@ function Checkout({ cart = [], user, placeOrder }) {
       }
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
 
     try {
@@ -227,6 +236,7 @@ function Checkout({ cart = [], user, placeOrder }) {
         setError(result.message || 'Ocurrió un error al procesar tu orden.');
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

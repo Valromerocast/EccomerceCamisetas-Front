@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
+import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 
 function Login({ user, login }) {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ function Login({ user, login }) {
   // Mensaje de error que se muestra si las credenciales son incorrectas
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  useScrollOnMessage(error);
 
   // Si ya está logueado, no tiene sentido que entre al login — lo mando directamente.
   // Los hooks se declaran antes para conservar el mismo orden entre renders.

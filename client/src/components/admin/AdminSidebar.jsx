@@ -5,16 +5,16 @@ import { NavLink, Link } from 'react-router-dom';
 
 function AdminSidebar({ user, logout }) {
   return (
-    <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-neutral-200 flex flex-col flex-shrink-0 lg:min-h-screen text-antracita">
+    <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-neutral-200 flex flex-col flex-shrink-0 text-antracita lg:h-screen lg:sticky lg:top-0 lg:overflow-hidden">
 
       {/* Encabezado del panel — nombre de la tienda y rol */}
-      <header className="p-6 border-b border-neutral-200 flex flex-col space-y-1">
+      <header className="p-6 border-b border-neutral-200 flex flex-col space-y-1 shrink-0">
         <h2 className="text-base font-bold text-antracita uppercase tracking-wider font-title">Panel Mundialista</h2>
         <span className="text-[10px] text-neutral-450 font-bold uppercase tracking-wider">Administrador</span>
       </header>
 
       {/* Links de navegación del panel admin */}
-      <nav className="flex-grow p-4 space-y-2" aria-label="Navegación del Administrador">
+      <nav className="flex-grow min-h-0 p-4 space-y-2 lg:overflow-y-auto" aria-label="Navegación del Administrador">
 
         {/* Link a Ventas — resaltado cuando es la ruta activa */}
         <NavLink
@@ -90,7 +90,7 @@ function AdminSidebar({ user, logout }) {
       </nav>
 
       {/* Parte inferior del sidebar: info del usuario logueado y botones de sesión */}
-      <footer className="p-4 border-t border-neutral-200 space-y-3.5 bg-neutral-50">
+      <footer className="p-4 border-t border-neutral-200 space-y-3.5 bg-neutral-50 shrink-0">
         {/* Avatar (inicial del nombre) + nombre y email del admin */}
         <div className="flex items-center space-x-3 px-2">
           {/* Avatar generado con la primera letra del nombre */}
