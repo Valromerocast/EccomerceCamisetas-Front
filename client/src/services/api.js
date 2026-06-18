@@ -161,16 +161,21 @@ export async function fetchProducts(filters = {}, options = {}) {
   appendQueryParam(params, 'sort', filters.sortBy);
 
   const query = params.toString();
-  const camisetas = await request(`/api/camisetas${query ? `?${query}` : ''}`, options);
+  const [camisetas, variantes] = await Promise.all([
+    request(`/api/camisetas${query ? `?${query}` : ''}`, options),
+    request('/api/camisetas/variantes', options)
+  ]);
+  const variantsByProduct = variantes.reduce((groupedVariants, variante) => {
+    const productId = Number(variante.camisetaId);
+    const currentVariants = groupedVariants.get(productId) || [];
+    currentVariants.push(variante);
+    groupedVariants.set(productId, currentVariants);
+    return groupedVariants;
+  }, new Map());
 
-  const products = await Promise.all(
-    camisetas.map(async (camiseta, index) => {
-      const variantes = await request(`/api/camisetas/${camiseta.id}/variantes`, options)
-        .catch(() => []);
-
-      return mapProduct(camiseta, variantes, index);
-    })
-  );
+  const products = camisetas.map((camiseta, index) => (
+    mapProduct(camiseta, variantsByProduct.get(Number(camiseta.id)) || [], index)
+  ));
 
   return products.filter((product) => product.active && product.image);
 }
