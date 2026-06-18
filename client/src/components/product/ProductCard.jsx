@@ -10,23 +10,28 @@ function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite })
   const storedUser = localStorage.getItem('camisetas_user') ? JSON.parse(localStorage.getItem('camisetas_user')) : null;
   const isAdmin = storedUser && storedUser.role === 'admin';
 
-  // Talle seleccionado: el usuario puede elegir antes de agregar al carrito desde la card
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0] || 'M');
+  const getSizeStock = (size) => (
+    typeof product.stock === 'object' && product.stock !== null
+      ? (parseInt(product.stock[size], 10) || 0)
+      : parseInt(product.stock, 10) || 0
+  );
+
+  const firstAvailableSize = product.sizes.find((size) => getSizeStock(size) > 0)
+    || product.sizes[0]
+    || 'M';
+  const [selectedSize, setSelectedSize] = useState(firstAvailableSize);
 
   // Calcular stock total sumando todos los talles (si es objeto) o usando el valor directo
   const totalStock = typeof product.stock === 'object' && product.stock !== null
     ? Object.values(product.stock).reduce((sum, qty) => sum + (parseInt(qty, 10) || 0), 0)
     : parseInt(product.stock, 10) || 0;
+  const selectedSizeStock = getSizeStock(selectedSize);
 
   // Agrega 1 unidad del producto con el talle seleccionado
   const handleQuickAdd = (e) => {
     e.preventDefault();       // evito que el link padre navegue
     e.stopPropagation();      // evito que el evento suba al contenedor
-    const sizeStock = typeof product.stock === 'object' && product.stock !== null
-      ? (parseInt(product.stock[selectedSize], 10) || 0)
-      : parseInt(product.stock, 10) || 0;
-
-    if (sizeStock > 0) {
+    if (selectedSizeStock > 0) {
       const success = addToCart(product, 1, selectedSize);
       if (success) {
         alert(`¡"${product.name}" (${selectedSize}) agregada al carrito!`);
@@ -44,9 +49,9 @@ function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite })
     }
   };
 
-  // Si la imagen principal falla, muestro la imagen de fallback del producto o una genérica
+  // Si la imagen externa falla, retiro la tarjeta para no mostrar una camiseta incorrecta.
   const handleImageError = (e) => {
-    e.target.src = product.fallbackImage || "/assets/success.svg";
+    e.currentTarget.closest('article')?.setAttribute('hidden', '');
   };
 
   return (
@@ -79,11 +84,11 @@ function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite })
       )}
 
       {/* Imagen del producto — el link lleva al detalle completo */}
-      <Link to={`/product/${product.id}`} className="block relative overflow-hidden aspect-[4/5] bg-neutral-100">
+      <Link to={`/product/${product.id}`} className="block relative overflow-hidden aspect-[4/5] bg-white">
         <img
           src={product.image}
           alt={`Fotografía de la camiseta ${product.name}`}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-500"
           loading="lazy"   // carga diferida para mejorar el rendimiento inicial
           onError={handleImageError}
         />
@@ -133,36 +138,52 @@ function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite })
         {/* Selector de talle — solo para usuarios normales, no para el admin */}
         {!isAdmin && (
           <div className="flex gap-2 mt-4" aria-label="Selección de talle">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelectedSize(size);   // actualizo el talle seleccionado
-                }}
-                className={`w-9 h-9 flex items-center justify-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${selectedSize === size
-                    ? 'bg-[#325B42] border-[#325B42] text-white shadow-sm'   // talle activo
-                    : 'bg-white border-neutral-200 text-antracita hover:border-neutral-350'
-                  }`}
-              >
-                {size}
-              </button>
-            ))}
+            {product.sizes.map((size) => {
+              const sizeStock = getSizeStock(size);
+
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedSize(size);
+                  }}
+                  disabled={sizeStock === 0}
+                  aria-pressed={selectedSize === size}
+                  title={sizeStock === 0 ? `Talle ${size} sin stock` : `${sizeStock} disponibles`}
+                  className={`w-9 h-9 flex items-center justify-center text-xs font-bold rounded-lg border transition-all ${sizeStock === 0
+                      ? 'bg-neutral-100 border-neutral-200 text-neutral-300 cursor-not-allowed line-through'
+                      : selectedSize === size
+                        ? 'bg-[#325B42] border-[#325B42] text-white shadow-sm'
+                        : 'bg-white border-neutral-200 text-antracita hover:border-neutral-350 cursor-pointer'
+                    }`}
+                >
+                  {size}
+                </button>
+              );
+            })}
           </div>
+        )}
+
+        {!isAdmin && totalStock > 0 && (
+          <p className="text-[10px] text-neutral-500 mt-2 font-semibold">
+            {selectedSizeStock} disponibles en talle {selectedSize}
+          </p>
         )}
 
         {/* Botón de compra rápida — también oculto para el admin */}
         {!isAdmin && (
           <button
             onClick={handleQuickAdd}
-            disabled={totalStock === 0}
-            className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 mt-5 cursor-pointer ${totalStock === 0
+            disabled={selectedSizeStock === 0}
+            className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 mt-5 cursor-pointer ${selectedSizeStock === 0
                 ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none'
                 : 'bg-[#325B42] hover:bg-[#284935] text-white hover:shadow-md'
               }`}
           >
-            {totalStock === 0 ? 'Agotado' : 'AGREGAR AL CARRITO'}
+            {selectedSizeStock === 0 ? 'Sin stock' : 'Agregar al carrito'}
           </button>
         )}
       </div>

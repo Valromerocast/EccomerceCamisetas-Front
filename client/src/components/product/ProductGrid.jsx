@@ -3,7 +3,7 @@
 // Si no hay productos que mostrar, muestra un estado vacío en lugar de dejar la página en blanco.
 import ProductCard from './ProductCard';
 
-function ProductGrid({ products = [], addToCart, favorites = [], toggleFavorite }) {
+function ProductGrid({ products = [], addToCart, favorites = [], toggleFavorite, onClearFilters }) {
 
   // Estado vacío: cuando no hay resultados que mostrar
   if (products.length === 0) {
@@ -15,8 +15,17 @@ function ProductGrid({ products = [], addToCart, favorites = [], toggleFavorite 
         </svg>
         <h3 className="text-base font-bold font-title">No se encontraron camisetas</h3>
         <p className="text-xs text-neutral-500 max-w-sm">
-          Prueba a cambiar tus términos de búsqueda o a modificar los filtros de precio en la parte superior.
+          Cambia la busqueda o limpia los filtros para volver a ver el catalogo.
         </p>
+        {onClearFilters && (
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="bg-primary hover:bg-primary/95 text-white text-xs font-bold px-4 py-2.5 rounded-lg cursor-pointer"
+          >
+            Limpiar filtros
+          </button>
+        )}
       </section>
     );
   }
