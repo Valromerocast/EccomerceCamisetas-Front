@@ -1,12 +1,18 @@
 // Vista del carrito de compras
 // Muestra todos los artículos del carrito y el resumen de compra lateral.
 // Si el carrito está vacío, muestra un estado vacío con invitación a explorar la tienda.
-import React from 'react';
 import { Link } from 'react-router-dom';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 
-function Cart({ cart = [], updateCartQuantity, removeFromCart, clearCart }) {
+function Cart({
+  cart = [],
+  cartLoading = false,
+  cartError = '',
+  updateCartQuantity,
+  removeFromCart,
+  clearCart
+}) {
   // Controlo si el carrito tiene artículos o está vacío para decidir qué renderizar
   const isCartEmpty = cart.length === 0;
 
@@ -21,6 +27,16 @@ function Cart({ cart = [], updateCartQuantity, removeFromCart, clearCart }) {
           {isCartEmpty ? 'Tienes 0 artículos seleccionados.' : `Tienes ${cart.reduce((sum, i) => sum + i.quantity, 0)} artículos seleccionados para tu próxima victoria.`}
         </p>
       </header>
+
+      {cartError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-lg text-xs font-bold">
+          {cartError}
+        </div>
+      )}
+
+      {cartLoading && (
+        <p className="text-xs font-semibold text-neutral-500">Actualizando carrito...</p>
+      )}
 
       {isCartEmpty ? (
         /* Estado vacío: le doy una razón al usuario para ir al catálogo */
@@ -57,6 +73,7 @@ function Cart({ cart = [], updateCartQuantity, removeFromCart, clearCart }) {
                   <CartItem
                     key={item.cartKey}
                     item={item}
+                    disabled={cartLoading}
                     updateCartQuantity={updateCartQuantity}
                     removeFromCart={removeFromCart}
                   />
@@ -69,7 +86,8 @@ function Cart({ cart = [], updateCartQuantity, removeFromCart, clearCart }) {
               {/* Botón para vaciar el carrito completamente */}
               <button
                 onClick={clearCart}
-                className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer flex items-center space-x-1.5"
+                disabled={cartLoading}
+                className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

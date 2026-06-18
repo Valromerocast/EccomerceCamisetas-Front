@@ -7,6 +7,8 @@ import { useParams, Link } from 'react-router-dom';
 function AdminOrderDetail({ orders = [], updateOrderStatus }) {
   const { id } = useParams();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [statusError, setStatusError] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Busco el pedido por ID en el array de órdenes
   const order = orders.find((o) => o.id === id);
@@ -28,8 +30,16 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
   }
 
   // Actualiza el estado del pedido al seleccionar una opción del dropdown
-  const handleStatusChange = (newStatus) => {
-    updateOrderStatus(order.id, newStatus);
+  const handleStatusChange = async (newStatus) => {
+    setUpdatingStatus(true);
+    setStatusError('');
+
+    const result = await updateOrderStatus(order.id, newStatus);
+    if (!result.success) {
+      setStatusError(result.message || 'No se pudo actualizar el pedido.');
+    }
+
+    setUpdatingStatus(false);
     setIsDropdownOpen(false);
   };
 
@@ -61,9 +71,7 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
 
   // Cálculos de resumen de precios
   const subtotal = order.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shippingFee = 0.00;
-  const taxes = subtotal * 0.08;
-  const grandTotal = subtotal + shippingFee + taxes;
+  const grandTotal = order.total;
 
   // Genera eventos dinámicos de la línea de tiempo según el estado actual
   const getTimelineEvents = () => {
@@ -165,9 +173,10 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="bg-[#325B42] hover:bg-[#284935] text-white font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-lg shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
+            disabled={updatingStatus}
+            className="bg-[#325B42] hover:bg-[#284935] text-white font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-lg shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <span>Cambiar Estado</span>
+            <span>{updatingStatus ? 'Actualizando...' : 'Cambiar Estado'}</span>
             <svg className={`w-3.5 h-3.5 transition-transform duration-205 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
             </svg>
@@ -194,6 +203,12 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
           )}
         </div>
       </header>
+
+      {statusError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-lg text-xs font-bold">
+          {statusError}
+        </div>
+      )}
 
       {/* Grilla principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -244,10 +259,6 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
               <span>Envío</span>
               <span className="text-[#325B42] font-bold">Gratis</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span>Impuestos (8%)</span>
-              <span className="text-antracita font-bold">${taxes.toFixed(2)} USD</span>
-            </div>
             <hr className="border-neutral-250/50" />
             <div className="flex justify-between items-center text-sm font-bold text-antracita font-title">
               <span>Total</span>
@@ -292,7 +303,7 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
                 </svg>
                 <div className="space-y-0.5">
                   <p className="text-[9px] uppercase font-bold text-neutral-400">Teléfono</p>
-                  <p className="font-semibold text-antracita">{order.shippingInfo.phone || 'No especificado'}</p>
+                  <p className="font-semibold text-antracita">{order.shippingInfo.phone || 'No almacenado'}</p>
                 </div>
               </div>
             </div>
@@ -308,7 +319,9 @@ function AdminOrderDetail({ orders = [], updateOrderStatus }) {
             <div className="space-y-1">
               <p className="text-[9px] uppercase font-bold text-neutral-400 tracking-wider">Dirección de Entrega</p>
               <p className="font-bold text-antracita leading-relaxed mt-1">
-                {order.shippingInfo.address}, {order.shippingInfo.city} ({order.shippingInfo.zipCode}), {order.shippingInfo.country || 'Argentina'}
+                {order.shippingInfo.address
+                  ? `${order.shippingInfo.address}, ${order.shippingInfo.city} (${order.shippingInfo.zipCode}), ${order.shippingInfo.country || 'Argentina'}`
+                  : 'No almacenada por el backend'}
               </p>
             </div>
 

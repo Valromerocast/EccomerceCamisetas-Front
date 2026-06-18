@@ -1,7 +1,6 @@
 // Selector de métodos de pago del checkout
 // Muestra los métodos disponibles (Mercado Pago, tarjeta, PayPal, transferencia) como opciones seleccionables.
 // El método activo queda resaltado con borde verde y fondo suave, y muestra su correspondiente formulario en caso de tarjeta.
-import React from 'react';
 import { Input } from '../ui/Form';
 
 function PaymentMethods({ selectedMethod, setSelectedMethod, cardData, setCardData, cardErrors, setCardErrors }) {

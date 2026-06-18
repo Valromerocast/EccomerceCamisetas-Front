@@ -2,7 +2,6 @@
 // Acá defino los bloques básicos para armar formularios en toda la app:
 // Input de texto, Select desplegable y Button con variantes de estilo.
 // Los uso en Login, Register, Checkout, AdminProductEdit y AdminUserAdd.
-import React from 'react';
 
 // ─── Input de texto ───────────────────────────────────────────────────────────
 // Acepta label, tipo, nombre, valor, handler de cambio, placeholder, required y error.

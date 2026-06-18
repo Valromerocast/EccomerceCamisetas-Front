@@ -1,10 +1,9 @@
 // Ítem individual del carrito de compras
 // Muestra la imagen del producto, su nombre, talle, color elegido, controles de cantidad y precio.
 // También permite eliminar el ítem del carrito.
-import React from 'react';
 import { Link } from 'react-router-dom';
 
-function CartItem({ item, updateCartQuantity, removeFromCart }) {
+function CartItem({ item, disabled = false, updateCartQuantity, removeFromCart }) {
   // Desestructuro el ítem para acceder a sus partes fácilmente
   const { cartKey, product, quantity, size } = item;
 
@@ -45,7 +44,8 @@ function CartItem({ item, updateCartQuantity, removeFromCart }) {
             {/* Botón de restar — si llega a 0, la función de App elimina el ítem directamente */}
             <button
               onClick={() => updateCartQuantity(cartKey, quantity - 1)}
-              className="w-7 h-7 flex items-center justify-center rounded-md bg-cream border border-neutral-200 text-neutral-500 hover:text-antracita hover:border-neutral-350 transition-colors cursor-pointer font-bold shadow-sm"
+              disabled={disabled}
+              className="w-7 h-7 flex items-center justify-center rounded-md bg-cream border border-neutral-200 text-neutral-500 hover:text-antracita hover:border-neutral-350 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-sm"
               aria-label={`Reducir cantidad de ${product.name}`}
             >
               -
@@ -55,7 +55,7 @@ function CartItem({ item, updateCartQuantity, removeFromCart }) {
             {/* Botón de sumar — se deshabilita cuando se alcanza el stock máximo */}
             <button
               onClick={() => updateCartQuantity(cartKey, quantity + 1)}
-              disabled={quantity >= currentStock}
+              disabled={disabled || quantity >= currentStock}
               className={`w-7 h-7 flex items-center justify-center rounded-md bg-cream border border-neutral-200 text-neutral-500 hover:text-antracita hover:border-neutral-350 transition-colors cursor-pointer font-bold shadow-sm ${quantity >= currentStock ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               aria-label={`Incrementar cantidad de ${product.name}`}
@@ -75,7 +75,8 @@ function CartItem({ item, updateCartQuantity, removeFromCart }) {
         {/* Botón de eliminar ítem del carrito */}
         <button
           onClick={() => removeFromCart(cartKey)}
-          className="text-xs text-red-500 hover:text-red-655 transition-colors flex items-center space-x-1 justify-end cursor-pointer font-semibold"
+          disabled={disabled}
+          className="text-xs text-red-500 hover:text-red-655 transition-colors flex items-center space-x-1 justify-end cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
           aria-label={`Quitar ${product.name} del carrito`}
         >
           {/* Ícono de papelera */}

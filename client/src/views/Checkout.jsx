@@ -84,11 +84,6 @@ const validateCvv = (cvv) => {
 function Checkout({ cart = [], user, placeOrder }) {
   const navigate = useNavigate();
 
-  // Si el carrito está vacío no tiene sentido estar en el checkout, lo mando de vuelta
-  if (cart.length === 0) {
-    return <Navigate to="/cart" replace />;
-  }
-
   // Estado del formulario de envío
   // Si el usuario está logueado, pre-relleno nombre y email para que no tenga que escribirlos
   const [formData, setFormData] = useState({
@@ -116,6 +111,12 @@ function Checkout({ cart = [], user, placeOrder }) {
 
   // Mensaje de error de validación del formulario
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Los hooks deben ejecutarse siempre en el mismo orden.
+  if (cart.length === 0) {
+    return <Navigate to="/cart" replace />;
+  }
 
   // Actualiza el estado cuando el usuario escribe en cualquier campo del formulario
   const handleInputChange = (e) => {
@@ -124,7 +125,7 @@ function Checkout({ cart = [], user, placeOrder }) {
   };
 
   // Valida y envía el formulario para crear la orden
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setCardErrors({});
@@ -182,7 +183,7 @@ function Checkout({ cart = [], user, placeOrder }) {
       setError('El código postal debe tener entre 4 y 10 caracteres.');
       return;
     }
-    if (!/^[a-zA-Z0-9\s\-]+$/.test(trimmedData.zipCode)) {
+    if (!/^[a-zA-Z0-9\s-]+$/.test(trimmedData.zipCode)) {
       setError('El código postal solo debe contener letras, números, espacios o guiones.');
       return;
     }
@@ -216,12 +217,17 @@ function Checkout({ cart = [], user, placeOrder }) {
       }
     }
 
-    // Llamo a la función del App que crea la orden, descuenta el stock y limpia el carrito
-    const result = placeOrder(trimmedData, paymentMethod);
-    if (result.success) {
-      navigate('/order-success');  // redirigir a la confirmación
-    } else {
-      setError(result.message || 'Ocurrió un error al procesar tu orden.');
+    setSubmitting(true);
+
+    try {
+      const result = await placeOrder(trimmedData, paymentMethod);
+      if (result.success) {
+        navigate('/order-success');
+      } else {
+        setError(result.message || 'Ocurrió un error al procesar tu orden.');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -327,9 +333,10 @@ function Checkout({ cart = [], user, placeOrder }) {
           {/* Botón de confirmación final — dispara el submit del formulario */}
           <button
             type="submit"
-            className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-md hover:shadow-primary/20 transition-all duration-200 cursor-pointer"
+            disabled={submitting}
+            className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-md hover:shadow-primary/20 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Finalizar Compra &rarr;
+            {submitting ? 'Procesando pedido...' : 'Finalizar Compra →'}
           </button>
 
           {/* Nota legal debajo del botón */}

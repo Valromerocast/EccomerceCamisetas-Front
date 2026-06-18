@@ -28,11 +28,11 @@ function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite })
   const selectedSizeStock = getSizeStock(selectedSize);
 
   // Agrega 1 unidad del producto con el talle seleccionado
-  const handleQuickAdd = (e) => {
+  const handleQuickAdd = async (e) => {
     e.preventDefault();       // evito que el link padre navegue
     e.stopPropagation();      // evito que el evento suba al contenedor
     if (selectedSizeStock > 0) {
-      const success = addToCart(product, 1, selectedSize);
+      const success = await addToCart(product, 1, selectedSize);
       if (success) {
         alert(`¡"${product.name}" (${selectedSize}) agregada al carrito!`);
       }
@@ -49,9 +49,10 @@ function ProductCard({ product, addToCart, isFavorite = false, toggleFavorite })
     }
   };
 
-  // Si la imagen externa falla, retiro la tarjeta para no mostrar una camiseta incorrecta.
+  // Si la URL no apunta a una imagen directa, mantengo el producto visible con fallback.
   const handleImageError = (e) => {
-    e.currentTarget.closest('article')?.setAttribute('hidden', '');
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = product.fallbackImage || '/assets/shirt-white.svg';
   };
 
   return (

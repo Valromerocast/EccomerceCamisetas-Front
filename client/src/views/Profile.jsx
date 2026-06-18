@@ -1,10 +1,9 @@
 // Vista del perfil del usuario
 // Muestra los datos de la cuenta y el historial de pedidos del usuario logueado.
 // Si no hay sesión activa, redirige al login.
-import React from 'react';
 import { Navigate, Link } from 'react-router-dom';
 
-function Profile({ user, logout, orders = [] }) {
+function Profile({ user, logout, orders = [], ordersLoading = false, ordersError = '' }) {
   // Si no hay usuario logueado, lo mando al login sin importar qué
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -84,7 +83,15 @@ function Profile({ user, logout, orders = [] }) {
         <section className="lg:col-span-2 space-y-6">
           <h2 className="text-lg font-bold text-antracita font-title">Historial de Pedidos</h2>
 
-          {userOrders.length === 0 ? (
+          {ordersError && (
+            <div className="bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-lg text-xs font-bold">
+              {ordersError}
+            </div>
+          )}
+
+          {ordersLoading ? (
+            <p className="text-sm text-neutral-500">Cargando pedidos...</p>
+          ) : userOrders.length === 0 ? (
             /* Estado vacío: el usuario no ha comprado nada todavía */
             <div className="text-center py-16 bg-white border border-neutral-200/80 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm">
               <div className="text-neutral-400">
@@ -135,7 +142,9 @@ function Profile({ user, logout, orders = [] }) {
                   {/* Pie del pedido: dirección de entrega y total */}
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-neutral-500">
-                      Entrega: <strong className="text-antracita font-medium">{order.shippingInfo.address}, {order.shippingInfo.city}</strong>
+                      {order.shippingInfo.address
+                        ? <>Entrega: <strong className="text-antracita font-medium">{order.shippingInfo.address}, {order.shippingInfo.city}</strong></>
+                        : 'Dirección no almacenada por el backend'}
                     </span>
                     <span className="font-bold text-antracita text-sm">
                       Total: ${order.total.toFixed(2)}
