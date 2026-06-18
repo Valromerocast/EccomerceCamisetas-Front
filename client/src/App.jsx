@@ -5,7 +5,29 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { INITIAL_PRODUCTS } from './data/products'
-import { fetchProducts, API_BASE_URL } from './services/api'
+import {
+  addCartItem,
+  changeOrderStatus,
+  clearAuthToken,
+  clearCartItems,
+  createOrder,
+  createProduct as createProductRequest,
+  createProductVariant,
+  deleteCartItem,
+  deleteProduct as deleteProductRequest,
+  deleteProductVariant,
+  fetchCart,
+  fetchCurrentUser,
+  fetchOrders,
+  fetchProducts,
+  getAuthToken,
+  loginUser,
+  mapCartResponse,
+  registerUser as registerUserRequest,
+  updateCartItem,
+  updateProduct as updateProductRequest,
+  updateProductVariant
+} from './services/api'
 
 // --- Componentes de layout ---
 import Layout from './components/layout/Layout'
@@ -43,50 +65,48 @@ function App() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState('');
 
-  // Usuario logueado actualmente.
-  // Ya no se carga desde localStorage para evitar depender de datos simulados del frontend.
+  // Usuario logueado actualmente y estado de restauración de la sesión JWT.
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  // Carrito de compras: persisto los artículos por usuario para que cada uno tenga el suyo independiente
-  const [cart, setCart] = useState(() => {
-    // Para el estado inicial de la recarga, intentamos obtener el usuario desde localStorage directamente
-    const savedUser = localStorage.getItem('camisetas_user');
-    let email = null;
-    if (savedUser && savedUser !== 'null') {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed && parsed.name !== 'Admin Valen') {
-          email = parsed.email;
-        }
-      } catch { }
-    }
-    if (!email) return [];
+  // El carrito se persiste en el backend y conserva los IDs de ítem y variante.
+  const [cart, setCart] = useState([]);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartError, setCartError] = useState('');
 
-    const saved = localStorage.getItem(`camisetas_cart_${email}`);
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
+  const getUserCart = async (currentUser) => {
+    if (currentUser.role !== 'user') {
+      return [];
     }
-    return [];
-  });
 
-  // Historial de órdenes de compra de todos los usuarios
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem('camisetas_orders');
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
+    try {
+      const response = await fetchCart();
+      return mapCartResponse(response);
+    } catch (error) {
+      console.error('No se pudo cargar el carrito:', error);
+      setCartError(error.message || 'No se pudo cargar el carrito.');
+      return [];
     }
-    return [];
-  });
+  };
+
+  // El backend devuelve los pedidos del usuario o todos los pedidos para admin.
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState('');
+
+  const getOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      setOrdersError('');
+      return await fetchOrders();
+    } catch (error) {
+      console.error('No se pudieron cargar los pedidos:', error);
+      setOrdersError(error.message || 'No se pudieron cargar los pedidos.');
+      return [];
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   // Favoritos: guarda los IDs de los productos marcados como favoritos
   const [favorites, setFavorites] = useState(() => {
@@ -146,56 +166,51 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(`camisetas_cart_${user.email}`, JSON.stringify(cart));
-    }
-  }, [cart, user]);
+    let isMounted = true;
 
-  useEffect(() => {
-    localStorage.setItem('camisetas_orders', JSON.stringify(orders));
-  }, [orders]);
+    async function restoreSession() {
+      if (!getAuthToken()) {
+        setAuthReady(true);
+        return;
+      }
+
+      try {
+        const currentUser = await fetchCurrentUser();
+        const [restoredCart, restoredOrders] = await Promise.all([
+          getUserCart(currentUser),
+          getOrders()
+        ]);
+
+        if (isMounted) {
+          setUser(currentUser);
+          setCart(restoredCart);
+          setOrders(restoredOrders);
+        }
+      } catch (error) {
+        console.error('No se pudo restaurar la sesión:', error);
+        clearAuthToken();
+
+        if (isMounted) {
+          setUser(null);
+          setCart([]);
+        }
+      } finally {
+        if (isMounted) {
+          setAuthReady(true);
+        }
+      }
+    }
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('camisetas_favorites', JSON.stringify(favorites));
   }, [favorites]);
-
-  // Sincroniza el carrito automáticamente cuando cambia el stock o la lista de productos
-  useEffect(() => {
-    let changed = false;
-    const updatedCart = cart
-      .map((item) => {
-        const freshProduct = products.find((p) => p.id === item.product.id);
-        if (!freshProduct) {
-          changed = true;
-          return null; // Si fue eliminado, lo quitamos
-        }
-
-        const size = item.size;
-        const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
-          ? (freshProduct.stock[size] || 0)
-          : freshProduct.stock;
-
-        if (item.quantity > currentStock) {
-          changed = true;
-          if (currentStock <= 0) {
-            return null; // Si ya no hay stock en absoluto para ese talle, lo quitamos
-          }
-          // Si hay menos stock del solicitado, bajamos la cantidad
-          return {
-            ...item,
-            quantity: currentStock
-          };
-        }
-
-        return item;
-      })
-      .filter((item) => item !== null);
-
-    if (changed) {
-      setCart(updatedCart);
-    }
-  }, [products, cart]);
-
 
   // Alterna el estado de favorito de un producto
   const toggleFavorite = (productId) => {
@@ -209,318 +224,312 @@ function App() {
 
   // ─── 3. Funciones del carrito ─────────────────────────────────────────────
 
-  // Agrega un producto al carrito. Si el usuario no está logueado, redirige al login.
-  // Si ya existe el mismo producto con la misma talla, suma la cantidad.
-  // Nunca permite agregar más unidades de las que hay en stock.
-  const addToCart = (product, quantity, size) => {
+  // Agrega una variante al carrito persistido por el backend.
+  const addToCart = async (product, quantity, size) => {
     if (!user) {
-      // Sin sesión activa no se puede comprar
       window.location.href = "/login";
       return false;
     }
+
     if (user.role === 'admin') {
-      // El admin no tiene carrito, solo gestiona la tienda
       alert("Los administradores no pueden agregar productos al carrito.");
       return false;
     }
+
     const qty = parseInt(quantity, 10) || 1;
-    setCart((prevCart) => {
-      // La clave única del ítem combina id + talla para distinguir variantes del mismo producto
-      const cartKey = `${product.id}-${size}`;
-      const existingItemIndex = prevCart.findIndex((item) => item.cartKey === cartKey);
+    const variant = product.variants?.find((item) => item.talle === size);
 
-      // Busco el producto actualizado para respetar el stock actual (puede haber cambiado)
-      const freshProduct = products.find((p) => p.id === product.id) || product;
-      const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
-        ? (freshProduct.stock[size] || 0)
-        : freshProduct.stock;
-
-      if (existingItemIndex > -1) {
-        // Si ya está en el carrito, sumo la cantidad pero sin pasarme del stock
-        return prevCart.map((item, index) => {
-          if (index === existingItemIndex) {
-            const newQty = item.quantity + qty;
-            return {
-              ...item,
-              quantity: Math.min(newQty, currentStock)
-            };
-          }
-          return item;
-        });
-      } else {
-        // Es un artículo nuevo en el carrito
-        const finalQty = Math.min(qty, currentStock);
-        return [...prevCart, { cartKey, product, quantity: finalQty, size }];
-      }
-    });
-    return true;
-  };
-
-  // Actualiza la cantidad de un ítem ya existente en el carrito.
-  // Si la cantidad llega a 0 o menos, directamente lo elimina.
-  const updateCartQuantity = (cartKey, quantity) => {
-    const qty = parseInt(quantity, 10) || 0;
-    if (qty <= 0) {
-      removeFromCart(cartKey);
-      return;
+    if (!variant?.id) {
+      alert(`No se encontró la variante del talle ${size}.`);
+      return false;
     }
-    setCart((prevCart) =>
-      prevCart.map((item) => {
-        if (item.cartKey === cartKey) {
-          const freshProduct = products.find((p) => p.id === item.product.id) || item.product;
-          const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
-            ? (freshProduct.stock[item.size] || 0)
-            : freshProduct.stock;
-          return { ...item, quantity: Math.min(qty, currentStock) };
-        }
-        return item;
-      })
-    );
+
+    setCartError('');
+    setCartLoading(true);
+
+    try {
+      const response = await addCartItem(variant.id, qty);
+      setCart(mapCartResponse(response));
+      return true;
+    } catch (error) {
+      console.error('Error al agregar al carrito:', error);
+      setCartError(error.message);
+      alert(error.message || 'No se pudo agregar el producto al carrito.');
+      return false;
+    } finally {
+      setCartLoading(false);
+    }
   };
 
-  // Elimina un ítem específico del carrito usando su clave única
-  const removeFromCart = (cartKey) => {
-    setCart((prevCart) => prevCart.filter((item) => item.cartKey !== cartKey));
+  // Actualiza la cantidad absoluta de un ítem del carrito.
+  const updateCartQuantity = async (cartKey, quantity) => {
+    const qty = parseInt(quantity, 10) || 0;
+
+    if (qty <= 0) {
+      return removeFromCart(cartKey);
+    }
+
+    const item = cart.find((cartItem) => cartItem.cartKey === cartKey);
+    if (!item) return false;
+
+    setCartError('');
+    setCartLoading(true);
+
+    try {
+      const response = await updateCartItem(item.itemId, qty);
+      setCart(mapCartResponse(response));
+      return true;
+    } catch (error) {
+      console.error('Error al actualizar el carrito:', error);
+      setCartError(error.message);
+      alert(error.message || 'No se pudo actualizar la cantidad.');
+      return false;
+    } finally {
+      setCartLoading(false);
+    }
   };
 
-  // Vacía el carrito completamente (se usa después de confirmar una compra)
-  const clearCart = () => {
-    setCart([]);
+  // Elimina un ítem específico usando el ID asignado por el backend.
+  const removeFromCart = async (cartKey) => {
+    const item = cart.find((cartItem) => cartItem.cartKey === cartKey);
+    if (!item) return false;
+
+    setCartError('');
+    setCartLoading(true);
+
+    try {
+      await deleteCartItem(item.itemId);
+      setCart((currentCart) => currentCart.filter((cartItem) => cartItem.cartKey !== cartKey));
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar del carrito:', error);
+      setCartError(error.message);
+      alert(error.message || 'No se pudo eliminar el producto.');
+      return false;
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Vacía el carrito persistido.
+  const clearCart = async () => {
+    if (!user || user.role === 'admin') {
+      setCart([]);
+      return true;
+    }
+
+    setCartError('');
+    setCartLoading(true);
+
+    try {
+      await clearCartItems();
+      setCart([]);
+      return true;
+    } catch (error) {
+      console.error('Error al vaciar el carrito:', error);
+      setCartError(error.message);
+      alert(error.message || 'No se pudo vaciar el carrito.');
+      return false;
+    } finally {
+      setCartLoading(false);
+    }
   };
 
 
   // ─── 4. Funciones de autenticación ───────────────────────────────────────
 
 
-  const login = (email, password, backendData = null) => {
-    const userData = backendData?.user || backendData?.usuario || backendData?.data?.user || backendData?.data?.usuario || backendData;
-    const role = userData?.role || userData?.rol || backendData?.role || backendData?.rol || backendData?.data?.role || backendData?.data?.rol;
-    const name = userData?.name || userData?.nombre || userData?.firstName || email.split('@')[0];
-    const apellido = userData?.apellido || userData?.lastName || userData?.surname || '';
-    const normalizedRole = String(role || '').toLowerCase();
-    const finalRole = normalizedRole === 'admin' || normalizedRole === 'administrator' || normalizedRole === 'administrador'
-      ? 'admin'
-      : 'user';
-
-    const loggedUser = {
-      name,
-      apellido,
-      email: userData?.email || email,
-      role: finalRole
-    };
-
-    setUser(loggedUser);
-
-    // Recupero el carrito asociado al usuario solo si existe en el navegador.
-    // No uso datos de usuarios almacenados localmente para decidir el login.
-    const savedCart = localStorage.getItem(`camisetas_cart_${loggedUser.email}`);
-    if (savedCart && savedCart !== 'null') {
-      try {
-        const parsed = JSON.parse(savedCart);
-        setCart(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        setCart([]);
-      }
-    } else {
-      setCart([]);
+  const login = async (email, password) => {
+    try {
+      const loggedUser = await loginUser(email, password);
+      const [userCart, userOrders] = await Promise.all([
+        getUserCart(loggedUser),
+        getOrders()
+      ]);
+      setUser(loggedUser);
+      setCart(userCart);
+      setOrders(userOrders);
+      return { success: true, user: loggedUser };
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+      return {
+        success: false,
+        message: error.status === 401 ? 'Credenciales incorrectas.' : error.message
+      };
     }
-
-    return { success: true, user: loggedUser };
   };
 
   // Cierra la sesión y también elimina el token JWT del navegador.
   const logout = () => {
     setUser(null);
     setCart([]);
-    localStorage.removeItem('camisetas_jwt');
+    setCartError('');
+    setOrders([]);
+    setOrdersError('');
+    clearAuthToken();
   };
 
   // Registra un nuevo usuario usando el backend.
-  // No se valida más contra una lista local del frontend.
-  const registerUser = async (payloadOrName, maybeEmail, maybePassword, maybeRole = 'user') => {
+  const registerUser = async (payload) => {
     try {
-      const isObjectPayload = payloadOrName && typeof payloadOrName === 'object' && !Array.isArray(payloadOrName);
-
-      const payload = isObjectPayload
-        ? payloadOrName
-        : {
-            nombre: payloadOrName || '',
-            apellido: maybeEmail && typeof maybeEmail === 'string' && maybeEmail.includes('@') ? '' : '',
-            email: maybeEmail || '',
-            password: maybePassword || '',
-            role: maybeRole || 'user'
-          };
-
-      const requestPayload = {
+      const currentUser = await registerUserRequest({
         nombre: payload.nombre || payload.name || '',
         apellido: payload.apellido || payload.lastName || payload.surname || '',
         email: payload.email || '',
         password: payload.password || ''
-      };
-
-      if (payload.role && payload.role !== 'user') {
-        requestPayload.role = payload.role;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestPayload)
       });
 
-      const responseText = await response.text();
-      let data = null;
-      try {
-        data = responseText ? JSON.parse(responseText) : null;
-      } catch {
-        data = null;
-      }
-
-      if (!response.ok) {
-        const message = data?.message || data?.error || data?.detail || responseText || 'No se pudo registrar el usuario.';
-        return { success: false, message };
-      }
-
-      const token = data?.token || data?.accessToken || data?.jwt || data?.data?.token;
-      if (token) {
-        localStorage.setItem('camisetas_jwt', token);
-      }
-
-      return { success: true, data };
+      const [userCart, userOrders] = await Promise.all([
+        getUserCart(currentUser),
+        getOrders()
+      ]);
+      setUser(currentUser);
+      setCart(userCart);
+      setOrders(userOrders);
+      return { success: true, user: currentUser };
     } catch (error) {
       console.error('Error al registrar usuario:', error);
-      return { success: false, message: 'No se pudo conectar con el servidor.' };
+      return { success: false, message: error.message || 'No se pudo registrar el usuario.' };
     }
   };
 
 
   // ─── 5. Funciones de órdenes ──────────────────────────────────────────────
 
-  // Crea una nueva orden a partir del carrito actual.
-  // También descuenta el stock de cada producto comprado.
-  const placeOrder = (shippingInfo, paymentMethod) => {
-    if (enrichedCart.length === 0) return { success: false, message: 'El carrito está vacío' };
-
-    // Validar stock y existencia antes de procesar el pedido para evitar compras inválidas
-    for (const item of enrichedCart) {
-      const freshProduct = products.find((p) => p.id === item.product.id);
-      if (!freshProduct) {
-        return {
-          success: false,
-          message: `El producto "${item.product.name}" ya no está disponible en la tienda.`
-        };
-      }
-
-      const size = item.size;
-      const currentStock = typeof freshProduct.stock === 'object' && freshProduct.stock !== null
-        ? (freshProduct.stock[size] || 0)
-        : freshProduct.stock;
-
-      if (currentStock <= 0) {
-        return {
-          success: false,
-          message: `El producto "${freshProduct.name}" en talle ${size} se ha quedado sin stock.`
-        };
-      }
-
-      if (currentStock < item.quantity) {
-        return {
-          success: false,
-          message: `Solo quedan ${currentStock} unidades disponibles de "${freshProduct.name}" en talle ${size}.`
-        };
-      }
+  // El backend valida stock, crea el pedido, descuenta existencias y vacía el carrito.
+  const placeOrder = async (shippingInfo, paymentMethod) => {
+    if (enrichedCart.length === 0) {
+      return { success: false, message: 'El carrito está vacío.' };
     }
 
+    try {
+      const newOrder = await createOrder({
+        userName: user?.name || shippingInfo.fullName,
+        shippingInfo,
+        paymentMethod
+      });
+      const refreshedProducts = await fetchProducts();
 
-    const subtotal = enrichedCart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-    const taxes = subtotal * 0.08;
-    const total = subtotal + taxes;
-    const newOrder = {
-      id: `ORD-${Date.now().toString().slice(-6)}`,   // ID único basado en timestamp
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      userEmail: user ? user.email : 'invitado@tshirt.com',
-      userName: user ? user.name : shippingInfo.fullName,
-      items: [...enrichedCart],
-      total,
-      shippingInfo,
-      paymentMethod,
-      status: 'Procesando' // Estados posibles: Procesando, Enviado, Entregado, Cancelado
-    };
-
-    // Descuento el stock de cada producto incluido en la orden
-    setProducts((prevProducts) =>
-      prevProducts.map((p) => {
-        const cartItemsForProduct = enrichedCart.filter((item) => item.product.id === p.id);
-        if (cartItemsForProduct.length === 0) return p;
-
-        if (typeof p.stock === 'object' && p.stock !== null) {
-          const newStock = { ...p.stock };
-          cartItemsForProduct.forEach((item) => {
-            const size = item.size;
-            if (newStock[size] !== undefined) {
-              newStock[size] = Math.max(0, newStock[size] - item.quantity);
-            }
-          });
-          return { ...p, stock: newStock };
-        } else {
-          const totalPurchased = cartItemsForProduct.reduce((sum, item) => sum + item.quantity, 0);
-          return {
-            ...p,
-            stock: Math.max(0, p.stock - totalPurchased)  // nunca negativo
-          };
-        }
-      })
-    );
-
-    setOrders((prevOrders) => [newOrder, ...prevOrders]);  // nueva orden va primero
-    clearCart();
-    return { success: true, orderId: newOrder.id };
+      setOrders((currentOrders) => [newOrder, ...currentOrders]);
+      setCart([]);
+      setProducts(refreshedProducts);
+      return { success: true, orderId: newOrder.id };
+    } catch (error) {
+      console.error('Error al crear el pedido:', error);
+      return {
+        success: false,
+        message: error.message || 'No se pudo crear el pedido.'
+      };
+    }
   };
 
 
   // ─── 6. Funciones de administración de productos ─────────────────────────
 
-  // Agrega un producto nuevo al catálogo. El ID lo calculo como el máximo actual + 1
-  const addProduct = (newProductData) => {
-    const newId = products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1;
-    const newProduct = {
-      id: newId,
-      name: newProductData.name,
-      subtitle: newProductData.subtitle || '', // guardo el equipo o la selección
-      price: parseFloat(newProductData.price),
-      description: newProductData.description,
-      category: newProductData.category,
-      sizes: newProductData.sizes,       // array de talles disponibles
-      image: newProductData.image || '/assets/success.svg',
-      rating: 5.0,
-      reviewsCount: 0,
-      stock: typeof newProductData.stock === 'object' ? newProductData.stock : {}, // guardo el objeto de stock por talle
-      featured: newProductData.featured || false
-    };
-    setProducts((prev) => [...prev, newProduct]);
+  const refreshProducts = async () => {
+    const refreshedProducts = await fetchProducts();
+    setProducts(refreshedProducts);
+    return refreshedProducts;
   };
 
-  // Reemplaza un producto existente con los datos actualizados (edición desde el panel admin)
-  const updateProduct = (updatedProduct) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
-    );
+  const addProduct = async ({ product, variants }) => {
+    try {
+      const createdProduct = await createProductRequest(product);
+
+      for (const variant of variants) {
+        await createProductVariant(createdProduct.id, {
+          talleId: variant.talleId,
+          stock: variant.stock,
+          sku: variant.sku,
+          color: variant.color
+        });
+      }
+
+      await refreshProducts();
+      return { success: true, productId: createdProduct.id };
+    } catch (error) {
+      console.error('Error al crear el producto:', error);
+      return { success: false, message: error.message || 'No se pudo crear el producto.' };
+    }
   };
 
-  // Elimina un producto del catálogo por su ID
-  const deleteProduct = (id) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const updateProduct = async (productId, { product, variants }) => {
+    try {
+      await updateProductRequest(productId, product);
+
+      const currentProduct = products.find((item) => item.id === productId);
+      const existingBySize = new Map(
+        (currentProduct?.variants || []).map((variant) => [variant.talle, variant])
+      );
+      const requestedSizes = new Set(variants.map((variant) => variant.sizeName));
+
+      for (const variant of variants) {
+        const existing = existingBySize.get(variant.sizeName);
+        const payload = {
+          talleId: variant.talleId,
+          stock: variant.stock,
+          sku: variant.sku,
+          color: variant.color
+        };
+
+        if (existing) {
+          await updateProductVariant(existing.id, payload);
+        } else {
+          await createProductVariant(productId, payload);
+        }
+      }
+
+      for (const existing of currentProduct?.variants || []) {
+        if (!requestedSizes.has(existing.talle)) {
+          await deleteProductVariant(existing.id);
+        }
+      }
+
+      await refreshProducts();
+      return { success: true };
+    } catch (error) {
+      console.error('Error al actualizar el producto:', error);
+      return { success: false, message: error.message || 'No se pudo actualizar el producto.' };
+    }
+  };
+
+  const deleteProduct = async (id) => {
+    try {
+      await deleteProductRequest(id);
+      setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
+      return { success: true };
+    } catch (error) {
+      console.error('Error al eliminar el producto:', error);
+      return { success: false, message: error.message || 'No se pudo eliminar el producto.' };
+    }
   };
 
   // Cambia el estado de una orden (ej: de "Procesando" a "Enviado")
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
+  const updateOrderStatus = async (orderId, newStatus) => {
+    const order = orders.find((item) => item.id === orderId);
+    if (!order) {
+      return { success: false, message: 'Pedido no encontrado.' };
+    }
+
+    try {
+      const updatedOrder = await changeOrderStatus(order.backendId, newStatus);
+      setOrders((currentOrders) =>
+        currentOrders.map((item) => (
+          item.id === orderId
+            ? {
+                ...updatedOrder,
+                userName: item.userName,
+                shippingInfo: item.shippingInfo,
+                paymentMethod: item.paymentMethod
+              }
+            : item
+        ))
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Error al actualizar el pedido:', error);
+      return { success: false, message: error.message || 'No se pudo actualizar el pedido.' };
+    }
   };
 
 
@@ -535,8 +544,27 @@ function App() {
     };
   });
 
+  const enrichedOrders = orders.map((order) => ({
+    ...order,
+    userName: order.userEmail === user?.email
+      ? `${user.name} ${user.apellido || ''}`.trim()
+      : order.userName,
+    items: order.items.map((item) => ({
+      ...item,
+      product: products.find((product) => product.id === item.productId) || item.product
+    }))
+  }));
+
 
   // ─── 8. Árbol de rutas ────────────────────────────────────────────────────
+  if (!authReady) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <p className="text-sm font-semibold text-neutral-500">Restaurando sesión...</p>
+      </main>
+    );
+  }
+
   return (
     <Router>
       <Routes>
@@ -545,13 +573,13 @@ function App() {
           <Route path="/" element={<Home products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
           <Route path="/catalog" element={<Catalog products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} favorites={favorites} toggleFavorite={toggleFavorite} />} />
           <Route path="/product/:id" element={<ProductDetail products={products} productsLoading={productsLoading} productsError={productsError} addToCart={addToCart} />} />
-          <Route path="/cart" element={<Cart cart={enrichedCart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} clearCart={clearCart} />} />
+          <Route path="/cart" element={<Cart cart={enrichedCart} cartLoading={cartLoading} cartError={cartError} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} clearCart={clearCart} />} />
           <Route path="/checkout" element={<Checkout cart={enrichedCart} user={user} placeOrder={placeOrder} />} />
-          <Route path="/order-success" element={<OrderSuccess orders={orders} />} />
+          <Route path="/order-success" element={<OrderSuccess orders={enrichedOrders} />} />
           <Route path="/login" element={<Login user={user} login={login} />} />
-          <Route path="/register" element={<Register registerUser={registerUser} login={login} />} />
+          <Route path="/register" element={<Register registerUser={registerUser} />} />
           <Route path="/register-success" element={<RegisterSuccess />} />
-          <Route path="/profile" element={<Profile user={user} logout={logout} orders={orders} />} />
+          <Route path="/profile" element={<Profile user={user} logout={logout} orders={enrichedOrders} ordersLoading={ordersLoading} ordersError={ordersError} />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -575,9 +603,9 @@ function App() {
           <Route path="inventory" element={<AdminInventory products={products} deleteProduct={deleteProduct} />} />
           <Route path="products/new" element={<AdminProductEdit addProduct={addProduct} />} />
           <Route path="products/:id/edit" element={<AdminProductEdit products={products} updateProduct={updateProduct} />} />
-          <Route path="sales" element={<AdminSales orders={orders} />} />
+          <Route path="sales" element={<AdminSales orders={enrichedOrders} ordersLoading={ordersLoading} ordersError={ordersError} />} />
           <Route path="users/add" element={<AdminUserAdd registerUser={registerUser} />} />
-          <Route path="orders/:id" element={<AdminOrderDetail orders={orders} updateOrderStatus={updateOrderStatus} />} />
+          <Route path="orders/:id" element={<AdminOrderDetail orders={enrichedOrders} updateOrderStatus={updateOrderStatus} />} />
         </Route>
       </Routes>
     </Router>

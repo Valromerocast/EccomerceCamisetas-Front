@@ -1,24 +1,51 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const TOKEN_STORAGE_KEY = 'camisetas_jwt';
 const SIZE_ORDER = ['S', 'M', 'L', 'XL'];
 
 async function request(path, options = {}) {
+  const {
+    auth = true,
+    headers: optionHeaders = {},
+    ...fetchOptions
+  } = options;
   const headers = {
     Accept: 'application/json',
-    ...options.headers
+    ...optionHeaders
   };
 
-  if (options.body) {
+  if (fetchOptions.body) {
     headers['Content-Type'] = 'application/json';
   }
 
+  const token = getAuthToken();
+  if (auth && token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Error ${response.status} al llamar a ${path}`);
+    const responseText = await response.text();
+    let responseData;
+
+    try {
+      responseData = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      responseData = null;
+    }
+
+    const message = responseData?.message
+      || responseData?.error
+      || responseData?.detail
+      || responseText
+      || `Error ${response.status} al llamar a ${path}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = responseData;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -26,6 +53,207 @@ async function request(path, options = {}) {
   }
 
   return response.json();
+}
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
+function saveAuthToken(token) {
+  if (!token) {
+    throw new Error('El backend no devolvió un token de autenticación.');
+  }
+
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+function mapAuthenticatedUser(usuario) {
+  const normalizedRole = String(usuario?.rol || usuario?.role || '').toLowerCase();
+
+  return {
+    id: usuario?.id,
+    name: usuario?.nombre || usuario?.name || '',
+    apellido: usuario?.apellido || '',
+    email: usuario?.email || '',
+    direccion: usuario?.direccion || '',
+    telefono: usuario?.telefono || '',
+    active: usuario?.activo !== false,
+    role: normalizedRole.includes('admin') ? 'admin' : 'user'
+  };
+}
+
+export async function fetchCurrentUser() {
+  const usuario = await request('/api/usuarios/me');
+  return mapAuthenticatedUser(usuario);
+}
+
+async function authenticate(path, payload) {
+  const authResponse = await request(path, {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload)
+  });
+
+  saveAuthToken(authResponse?.token);
+
+  try {
+    return await fetchCurrentUser();
+  } catch (error) {
+    clearAuthToken();
+    throw error;
+  }
+}
+
+export function loginUser(email, password) {
+  return authenticate('/api/auth/login', { email, password });
+}
+
+export function registerUser(payload) {
+  return authenticate('/api/auth/register', payload);
+}
+
+export function mapCartResponse(carrito) {
+  return (carrito?.items || []).map((item) => ({
+    cartKey: String(item.id),
+    itemId: Number(item.id),
+    variantId: Number(item.varianteId),
+    productId: Number(item.camisetaId),
+    quantity: Number(item.cantidad) || 0,
+    size: item.talle,
+    color: item.color,
+    sku: item.sku,
+    unitPrice: Number(item.precioUnitario) || 0,
+    subtotal: Number(item.subtotal) || 0,
+    product: {
+      id: Number(item.camisetaId),
+      name: item.camiseta,
+      price: Number(item.precioUnitario) || 0,
+      image: '/assets/shirt-white.svg',
+      fallbackImage: '/assets/shirt-white.svg',
+      stock: { [item.talle]: Number(item.cantidad) || 0 }
+    }
+  }));
+}
+
+export function fetchCart() {
+  return request('/api/carrito');
+}
+
+export function addCartItem(varianteId, cantidad) {
+  return request('/api/carrito/items', {
+    method: 'POST',
+    body: JSON.stringify({ varianteId, cantidad })
+  });
+}
+
+export function updateCartItem(itemId, cantidad) {
+  return request(`/api/carrito/items/${itemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ cantidad })
+  });
+}
+
+export function deleteCartItem(itemId) {
+  return request(`/api/carrito/items/${itemId}`, {
+    method: 'DELETE'
+  });
+}
+
+export function clearCartItems() {
+  return request('/api/carrito', {
+    method: 'DELETE'
+  });
+}
+
+function mapOrderStatus(status) {
+  const normalized = String(status || '').trim().toUpperCase();
+  const labels = {
+    PENDIENTE: 'Procesando',
+    PROCESANDO: 'Procesando',
+    ENVIADO: 'Enviado',
+    ENTREGADO: 'Entregado',
+    CANCELADO: 'Cancelado'
+  };
+
+  return labels[normalized] || status || 'Procesando';
+}
+
+function toBackendOrderStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  const values = {
+    procesando: 'PENDIENTE',
+    enviado: 'ENVIADO',
+    entregado: 'ENTREGADO',
+    cancelado: 'CANCELADO'
+  };
+
+  return values[normalized] || String(status || '').trim().toUpperCase();
+}
+
+export function mapOrderResponse(pedido, extra = {}) {
+  const fecha = pedido?.fecha ? new Date(pedido.fecha) : new Date();
+  const items = (pedido?.detalles || []).map((detalle) => ({
+    cartKey: `pedido-${pedido.id}-${detalle.id}`,
+    detailId: Number(detalle.id),
+    variantId: Number(detalle.varianteId),
+    productId: Number(detalle.camisetaId),
+    quantity: Number(detalle.cantidad) || 0,
+    size: detalle.talle,
+    color: detalle.color,
+    sku: detalle.sku,
+    subtotal: Number(detalle.subtotal) || 0,
+    product: {
+      id: Number(detalle.camisetaId),
+      name: detalle.camisetaNombre,
+      price: Number(detalle.precioUnitario) || 0,
+      image: '/assets/shirt-white.svg',
+      fallbackImage: '/assets/shirt-white.svg'
+    }
+  }));
+
+  return {
+    id: `MS-${pedido.id}`,
+    backendId: Number(pedido.id),
+    userId: Number(pedido.usuarioId),
+    userEmail: pedido.usuarioEmail,
+    userName: extra.userName || pedido.usuarioEmail?.split('@')[0] || 'Cliente',
+    date: fecha.toLocaleDateString('es-AR'),
+    time: fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+    timestamp: fecha.toISOString(),
+    status: mapOrderStatus(pedido.estado),
+    total: Number(pedido.total) || 0,
+    items,
+    shippingInfo: extra.shippingInfo || {
+      address: '',
+      city: '',
+      zipCode: '',
+      phone: '',
+      country: 'Argentina'
+    },
+    paymentMethod: extra.paymentMethod || ''
+  };
+}
+
+export async function fetchOrders() {
+  const pedidos = await request('/api/pedidos');
+  return pedidos.map((pedido) => mapOrderResponse(pedido));
+}
+
+export async function createOrder(extra = {}) {
+  const pedido = await request('/api/pedidos', { method: 'POST' });
+  return mapOrderResponse(pedido, extra);
+}
+
+export async function changeOrderStatus(orderId, status) {
+  const pedido = await request(`/api/pedidos/${orderId}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estado: toBackendOrderStatus(status) })
+  });
+  return mapOrderResponse(pedido);
 }
 
 function getCategory(camiseta) {
@@ -178,6 +406,46 @@ export async function fetchProducts(filters = {}, options = {}) {
   ));
 
   return products.filter((product) => product.active && product.image);
+}
+
+export function createProduct(payload) {
+  return request('/api/camisetas', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateProduct(productId, payload) {
+  return request(`/api/camisetas/${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteProduct(productId) {
+  return request(`/api/camisetas/${productId}`, {
+    method: 'DELETE'
+  });
+}
+
+export function createProductVariant(productId, payload) {
+  return request(`/api/camisetas/${productId}/variantes`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateProductVariant(variantId, payload) {
+  return request(`/api/camisetas/variantes/${variantId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteProductVariant(variantId) {
+  return request(`/api/camisetas/variantes/${variantId}`, {
+    method: 'DELETE'
+  });
 }
 
 export { API_BASE_URL };

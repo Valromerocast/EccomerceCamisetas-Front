@@ -6,9 +6,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 
-const API_URL = 'http://localhost:8080';
-
-function Register({ registerUser, login }) {
+function Register({ registerUser }) {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -91,16 +89,11 @@ function Register({ registerUser, login }) {
       });
 
       if (registerResult.success) {
-        const loginResult = login(trimmedEmail, formData.password, registerResult.data);
-        if (loginResult.success) {
-          navigate('/register-success');
-        } else {
-          setError('La cuenta se creó, pero no se pudo iniciar la sesión automáticamente.');
-        }
+        navigate('/register-success');
       } else {
         setError(registerResult.message || 'Error al registrar. Intentá de nuevo.');
       }
-    } catch (_) {
+    } catch {
       setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
     } finally {
       setLoading(false);

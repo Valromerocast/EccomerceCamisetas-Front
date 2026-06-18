@@ -1,7 +1,6 @@
 // Resumen de compra lateral del carrito
 // Calcula subtotal, costo de envío y total, y muestra el botón para ir al checkout.
 // El envío es gratis si el subtotal supera los $60.
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 function CartSummary({ cart }) {
@@ -11,11 +10,8 @@ function CartSummary({ cart }) {
   // El envío siempre es gratis en todas las compras
   const shippingCost = 0;
 
-  // Impuestos del 8%
-  const taxes = subtotal * 0.08;
-
-  // Total final = subtotal + envío + impuestos
-  const total = subtotal + shippingCost + taxes;
+  // El backend no agrega impuestos al crear el pedido.
+  const total = subtotal + shippingCost;
 
   return (
     <section className="bg-white border border-neutral-200 rounded-xl p-6 space-y-6 shadow-sm text-antracita">
@@ -30,10 +26,6 @@ function CartSummary({ cart }) {
         <div className="flex justify-between">
           <span>Envío</span>
           <span className="text-emerald-600 font-bold">Gratis</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Impuestos (8%)</span>
-          <span className="text-antracita font-bold">${taxes.toFixed(2)}</span>
         </div>
       </div>
 

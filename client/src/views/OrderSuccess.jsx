@@ -1,7 +1,6 @@
 // Vista de confirmación de compra exitosa
 // Se muestra después de que el usuario confirma el checkout.
 // Muestra el detalle del pedido, desglose de costos y fecha estimada de entrega.
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 function OrderSuccess({ orders = [] }) {
@@ -27,7 +26,6 @@ function OrderSuccess({ orders = [] }) {
 
   // Calcula precios basados en la orden
   const subtotal = lastOrder.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const taxes = subtotal * 0.08;
   const total = lastOrder.total;
 
   // Genera fecha estimada de entrega (3 a 5 días)
@@ -70,10 +68,10 @@ function OrderSuccess({ orders = [] }) {
           />
         </figure>
         
-        {/* Badge Pago Confirmado */}
+        {/* Badge de pedido confirmado */}
         <div>
           <span className="inline-block bg-white border border-[#3E664F] text-[#3E664F] text-[10px] font-extrabold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-sm">
-            Pago Confirmado
+            Pedido Confirmado
           </span>
         </div>
 
@@ -84,7 +82,7 @@ function OrderSuccess({ orders = [] }) {
         
         {/* Subtítulo */}
         <p className="text-xs text-neutral-500 max-w-xl leading-relaxed">
-          Tu pedido ha sido procesado con éxito. Prepárate para lucir la historia del fútbol mundial. Te hemos enviado un correo de confirmación con los detalles de tu compra.
+          Tu pedido fue registrado con éxito y el stock se actualizó en nuestra tienda.
         </p>
       </section>
 
@@ -155,10 +153,6 @@ function OrderSuccess({ orders = [] }) {
               <span>Envío</span>
               <span className="text-[#3E664F] font-bold">GRATIS</span>
             </div>
-            <div className="flex justify-between">
-              <span>Impuestos (8%)</span>
-              <span className="text-antracita font-bold">${taxes.toFixed(2)}</span>
-            </div>
           </div>
 
           <hr className="border-neutral-200" />
@@ -187,7 +181,11 @@ function OrderSuccess({ orders = [] }) {
                 className="w-4 h-4 object-contain brightness-0 invert" 
                 alt="" 
               />
-              <span>Envío prioritario a {lastOrder.shippingInfo.city || 'Buenos Aires'}</span>
+              <span>
+                {lastOrder.shippingInfo.city
+                  ? `Envío prioritario a ${lastOrder.shippingInfo.city}`
+                  : 'Datos de envío informados durante el checkout'}
+              </span>
             </div>
           </article>
 

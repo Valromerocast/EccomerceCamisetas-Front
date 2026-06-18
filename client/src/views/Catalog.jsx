@@ -143,7 +143,18 @@ function Catalog({
     return options.sizes.filter((size) => sizeNames.has(size.nombre));
   }, [options.sizes, products]);
 
-  const filteredCatalogProducts = priceError ? [] : catalogProducts;
+  const hasActiveFilters = Boolean(
+    filters.search
+    || filters.category
+    || filters.countryId
+    || filters.genderId
+    || filters.size
+    || filters.minPrice !== ''
+    || filters.maxPrice !== ''
+    || filters.sortBy !== 'default'
+  );
+  const currentCatalogProducts = hasActiveFilters ? catalogProducts : products;
+  const filteredCatalogProducts = priceError ? [] : currentCatalogProducts;
   const displayedProducts = filters.category === 'favoritos'
     ? filteredCatalogProducts.filter((product) => favorites.includes(product.id))
     : filteredCatalogProducts;

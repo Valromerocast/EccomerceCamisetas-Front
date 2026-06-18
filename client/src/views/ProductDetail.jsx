@@ -2,7 +2,7 @@
 // Muestra la imagen ampliada, descripción completa, selector de talle y color, y el botón de compra.
 // Si el usuario es admin, solo muestra la info sin los controles de compra.
 import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 function getStockForSize(product, size) {
   if (!product) {
@@ -21,7 +21,6 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
 
   // Obtengo el id de la URL con useParams y busco el producto correspondiente
   const { id } = useParams();
-  const navigate = useNavigate();
   const product = products.find((p) => p.id === parseInt(id, 10));
 
   const defaultSize = product?.sizes.find((size) => getStockForSize(product, size) > 0)
@@ -93,18 +92,18 @@ function ProductDetail({ products = [], productsLoading = false, productsError =
   };
 
   // Agrego el producto al carrito con la talla y cantidad seleccionados
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (currentSizeStock === 0) return;  // no hago nada si está agotado
-    const success = addToCart(product, quantity, selectedSize);
+    const success = await addToCart(product, quantity, selectedSize);
     if (success) {
       alert(`¡"${product.name}" (${selectedSize}) agregada al carrito!`);
     }
   };
 
-  // Si la imagen externa falla, retiro el producto del detalle.
+  // Si la imagen externa falla, mantengo el detalle con una imagen genérica.
   const handleImageError = (e) => {
     e.currentTarget.onerror = null;
-    navigate('/catalog', { replace: true });
+    e.currentTarget.src = product.fallbackImage || '/assets/shirt-white.svg';
   };
 
   return (

@@ -1,13 +1,24 @@
 // Vista del inventario de productos (panel admin)
 // Muestra todos los productos en una tabla con su imagen, nombre, categoría, stock por talle y precio.
 // Desde acá el admin puede editar o eliminar cualquier producto, y agregar uno nuevo.
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 function AdminInventory({ products = [], deleteProduct }) {
+  const [deleteError, setDeleteError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
   // Pide confirmación antes de eliminar un producto (por seguridad)
-  const handleDelete = (id, name) => {
+  const handleDelete = async (id, name) => {
     if (window.confirm(`¿Estás seguro de que deseas eliminar la camiseta "${name}" del catálogo?`)) {
-      deleteProduct(id);
+      setDeletingId(id);
+      setDeleteError('');
+      const result = await deleteProduct(id);
+      setDeletingId(null);
+
+      if (!result.success) {
+        setDeleteError(result.message || 'No se pudo eliminar el producto.');
+      }
     }
   };
 
@@ -68,6 +79,12 @@ function AdminInventory({ products = [], deleteProduct }) {
           + Nuevo Artículo
         </Link>
       </header>
+
+      {deleteError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg text-xs font-bold">
+          {deleteError}
+        </div>
+      )}
 
       {/* Si no hay productos, muestro un estado vacío */}
       {products.length === 0 ? (
@@ -131,10 +148,11 @@ function AdminInventory({ products = [], deleteProduct }) {
                         </Link>
                         <button
                           onClick={() => handleDelete(product.id, product.name)}
-                          className="bg-red-50 hover:bg-red-550 hover:text-white text-red-500 border border-red-200 px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-block uppercase text-[10px] tracking-wider"
+                          disabled={deletingId === product.id}
+                          className="bg-red-50 hover:bg-red-550 hover:text-white text-red-500 border border-red-200 px-3 py-1.5 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-block uppercase text-[10px] tracking-wider"
                           aria-label={`Eliminar ${product.name}`}
                         >
-                          Eliminar
+                          {deletingId === product.id ? 'Eliminando...' : 'Eliminar'}
                         </button>
                       </td>
                     </tr>

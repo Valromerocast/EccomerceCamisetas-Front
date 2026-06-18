@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-function AdminSales({ orders = [] }) {
+function AdminSales({ orders = [], ordersLoading = false, ordersError = '' }) {
   // Estado del filtro de tabs: por defecto muestra todos los pedidos
   const [statusFilter, setStatusFilter] = useState('Todos');
 
@@ -93,6 +93,12 @@ function AdminSales({ orders = [] }) {
       {/* ─── Tabla de pedidos ─────────────────────────────────────────────── */}
       <section className="space-y-4">
 
+        {ordersError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-lg text-xs font-bold">
+            {ordersError}
+          </div>
+        )}
+
         {/* Tabs de filtrado por estado — cada botón activa un filtro diferente */}
         <div className="flex flex-wrap gap-2 border-b border-neutral-200 pb-2">
           {['Todos', 'Procesando', 'Enviado', 'Entregado', 'Cancelado'].map((status) => (
@@ -112,7 +118,11 @@ function AdminSales({ orders = [] }) {
         </div>
 
         {/* Si no hay pedidos con el filtro activo, muestro un mensaje */}
-        {filteredOrders.length === 0 ? (
+        {ordersLoading ? (
+          <div className="text-center py-16 bg-white border border-neutral-200 rounded-xl shadow-sm">
+            <p className="text-sm text-neutral-500">Cargando pedidos...</p>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <div className="text-center py-16 bg-white border border-neutral-200 rounded-xl shadow-sm">
             <p className="text-sm text-neutral-500">No se encontraron pedidos con el estado seleccionado.</p>
           </div>

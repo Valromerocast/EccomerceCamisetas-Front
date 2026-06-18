@@ -1,13 +1,10 @@
 // Resumen del pedido dentro del checkout
 // Muestra la lista de artículos del carrito con precios, y el desglose de subtotal, envío, impuestos y total.
 // Se ubica en la columna derecha del formulario de checkout.
-import React from 'react';
-
 function CheckoutSummary({ cart }) {
   const subtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
   const shippingCost = 0;
-  const taxes = subtotal * 0.08;
-  const total = subtotal + shippingCost + taxes;
+  const total = subtotal + shippingCost;
 
   const handleImageError = (e, item) => {
     e.target.src = item.product.fallbackImage || "/assets/success.svg";
@@ -51,10 +48,6 @@ function CheckoutSummary({ cart }) {
         <div className="flex justify-between">
           <span>Envío</span>
           <span className="text-emerald-600 font-bold">Gratis</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Impuestos (8%)</span>
-          <span className="text-antracita font-bold">${taxes.toFixed(2)}</span>
         </div>
       </div>
 
