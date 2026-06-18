@@ -366,36 +366,45 @@ function App() {
 
   // ─── 4. Funciones de autenticación ───────────────────────────────────────
 
-  // Verifica email y contraseña contra la lista de usuarios guardada
-  // Devuelve un objeto con success: true/false para que el componente de login maneje la respuesta
-  const login = (email, password) => {
-    const foundUser = usersList.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (foundUser) {
-      const loggedUser = { name: foundUser.name, email: foundUser.email, role: foundUser.role };
-      setUser(loggedUser);
-      // Cargar el carrito específico de este usuario si ya existe
-      const savedCart = localStorage.getItem(`camisetas_cart_${loggedUser.email}`);
-      if (savedCart && savedCart !== 'null') {
-        try {
-          const parsed = JSON.parse(savedCart);
-          setCart(Array.isArray(parsed) ? parsed : []);
-        } catch {
-          setCart([]);
-        }
-      } else {
+  // Login real: ahora usa la respuesta del backend y NO busca usuarios en el localStorage.
+  const login = (email, password, backendData = null) => {
+    const userData = backendData?.user || backendData?.usuario || backendData?.data?.user || backendData?.data?.usuario || backendData;
+    const role = userData?.role || userData?.rol || backendData?.role || backendData?.rol || backendData?.data?.role || backendData?.data?.rol;
+    const name = userData?.name || userData?.nombre || userData?.firstName || email.split('@')[0];
+    const apellido = userData?.apellido || userData?.lastName || '';
+    const normalizedRole = String(role || '').toLowerCase();
+    const finalRole = normalizedRole === 'admin' || normalizedRole === 'administrator' || normalizedRole === 'administrador'
+      ? 'admin'
+      : 'user';
+
+    const loggedUser = {
+      name: apellido ? `${name} ${apellido}`.trim() : name,
+      email: userData?.email || email,
+      role: finalRole
+    };
+
+    setUser(loggedUser);
+
+    const savedCart = localStorage.getItem(`camisetas_cart_${loggedUser.email}`);
+    if (savedCart && savedCart !== 'null') {
+      try {
+        const parsed = JSON.parse(savedCart);
+        setCart(Array.isArray(parsed) ? parsed : []);
+      } catch {
         setCart([]);
       }
-      return { success: true, user: foundUser };
+    } else {
+      setCart([]);
     }
-    return { success: false, message: 'Credenciales incorrectas' };
+
+    return { success: true, user: loggedUser };
   };
 
-  // Cierra la sesión borrando el usuario del estado (también se borrará del localStorage por el useEffect)
+  // Cierra la sesión y también elimina el token JWT del navegador.
   const logout = () => {
     setUser(null);
-    setCart([]); // Vacía el carrito al cerrar sesión para no seguir viendo lo que se agregó
+    setCart([]);
+    localStorage.removeItem('camisetas_jwt');
   };
 
   // Registra un nuevo usuario. Solo acepta el rol 'user', el admin es único y no se puede crear desde acá.
@@ -566,7 +575,7 @@ function App() {
           <Route path="/checkout" element={<Checkout cart={enrichedCart} user={user} placeOrder={placeOrder} />} />
           <Route path="/order-success" element={<OrderSuccess orders={orders} />} />
           <Route path="/login" element={<Login user={user} login={login} />} />
-          <Route path="/register" element={<Register registerUser={registerUser} />} />
+          <Route path="/register" element={<Register registerUser={registerUser} login={login} />} />
           <Route path="/register-success" element={<RegisterSuccess />} />
           <Route path="/profile" element={<Profile user={user} logout={logout} orders={orders} />} />
           <Route path="/contact" element={<Contact />} />
