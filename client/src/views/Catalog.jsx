@@ -203,7 +203,12 @@ function Catalog({
         </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8 items-start">
+      <div className={`grid gap-8 items-start ${
+        filters.category === 'favoritos'
+          ? 'grid-cols-1'
+          : 'grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)]'
+        }`}>
+        {filters.category !== 'favoritos' && (
         <ProductFilters
           filters={filters}
           onChange={handleFilterChange}
@@ -213,6 +218,7 @@ function Catalog({
           sizes={availableSizes}
           disabled={optionsLoading}
         />
+      )}
 
         <section className="min-w-0 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-300 pb-3">
@@ -220,6 +226,7 @@ function Catalog({
               {loading ? 'Actualizando...' : `${displayedProducts.length} articulos encontrados`}
             </span>
 
+            {filters.category !== 'favoritos' && (
             <label className="flex items-center gap-2 text-xs text-neutral-500 font-semibold">
               <span>Ordenar por</span>
               <select
@@ -234,6 +241,7 @@ function Catalog({
                 <option value="name-desc">Nombre: Z-A</option>
               </select>
             </label>
+)}
           </div>
 
           {error && (

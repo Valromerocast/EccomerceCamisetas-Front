@@ -73,6 +73,18 @@ function Navbar({ user, cartCount, logout }) {
             >
               Ayuda
             </NavLink>
+            {user && user.role !== 'admin' && (
+            <NavLink
+              to="/catalog?category=favoritos"
+              className={({ isActive }) =>
+                `text-xs font-bold uppercase tracking-wider transition-colors duration-200 ${
+                  isActive ? 'text-primary' : 'text-antracita/70 hover:text-primary'
+                }`
+              }
+            >
+              Favoritos
+            </NavLink>
+)}
           </div>
 
           {/* Buscador + íconos de perfil y carrito — solo en desktop */}
