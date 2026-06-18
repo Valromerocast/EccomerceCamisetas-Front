@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 
+const API_URL = 'http://localhost:8080';
+
 function Login({ user, login }) {
   const navigate = useNavigate();
 
@@ -22,6 +24,7 @@ function Login({ user, login }) {
 
   // Mensaje de error que se muestra si las credenciales son incorrectas
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Actualiza el estado del formulario para cualquier campo (inputs y checkbox)
   const handleChange = (e) => {
@@ -32,38 +35,71 @@ function Login({ user, login }) {
     }));
   };
 
-  // Valida el formulario y llama a la función de login del App
-  const handleSubmit = (e) => {
+  // Valida el formulario y llama a la API de login
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     const emailTrimmed = formData.email.trim();
 
-    // Validación básica de campos vacíos
     if (!emailTrimmed || !formData.password) {
       setError('Por favor, completa todos los campos.');
       return;
     }
 
-    // Validación de formato de correo electrónico
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailTrimmed)) {
       setError('El correo electrónico no tiene un formato válido (ej: usuario@correo.com).');
       return;
     }
 
-    // Validación de longitud mínima de contraseña
     if (formData.password.length < 4) {
       setError('La contraseña debe tener al menos 4 caracteres.');
       return;
     }
 
-    const res = login(emailTrimmed, formData.password);
-    if (res.success) {
-      // Redirige según el rol: admin al panel, usuario normal a su perfil
-      navigate(res.user.role === 'admin' ? '/admin/sales' : '/profile');
-    } else {
-      setError(res.message);
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: emailTrimmed,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json().catch(() => null);
+      if (response.ok) {
+        const token = data?.token || data?.accessToken || data?.jwt || data?.data?.token;
+        if (token) {
+          localStorage.setItem('camisetas_jwt', token);
+        }
+
+        const res = login(emailTrimmed, formData.password, data);
+        if (res.success) {
+          navigate(res.user.role === 'admin' ? '/admin/sales' : '/profile');
+        } else {
+          setError(res.message || 'No se pudo iniciar sesión.');
+        }
+      } else {
+        const message = data?.message || data?.error || data?.detail || data?.msg;
+        if (message) {
+          setError(message);
+        } else if (response.status === 401) {
+          setError('Credenciales incorrectas.');
+        } else {
+          setError('Error al iniciar sesión. Intentá de nuevo.');
+        }
+      }
+    } catch (err) {
+      console.error('Error de red al hacer login:', err);
+      setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -159,13 +195,11 @@ function Login({ user, login }) {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" variant="primary">
-                Iniciar Sesión &rarr;
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? 'Iniciando sesión...' : 'Iniciar Sesión →'}
               </Button>
             </div>
           </form>
-
-
 
           {/* Link para ir al registro si no tiene cuenta */}
           <div className="text-center text-xs text-neutral-500">

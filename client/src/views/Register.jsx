@@ -1,26 +1,28 @@
 // Vista de registro de nuevo usuario
-// Valida todos los campos antes de enviar: nombre, email, contraseñas coincidentes y aceptación de términos.
-// Si el registro es exitoso, redirige a la página de confirmación.
+// Conectada al backend: POST /api/auth/register
+// Body esperado por el backend: nombre, apellido, email, password
+// confirmPassword y acceptTerms solo se usan para validación local
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 
-function Register({ registerUser }) {
+const API_URL = 'http://localhost:8080';
+
+function Register({ registerUser, login }) {
   const navigate = useNavigate();
 
-  // Estado del formulario: todos los campos que el usuario tiene que completar
   const [formData, setFormData] = useState({
     name: '',
+    apellido: '',
     email: '',
     password: '',
     confirmPassword: '',
     acceptTerms: false
   });
 
-  // Mensaje de error para mostrar si algo falla en la validación
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Handler genérico para actualizar cualquier campo del formulario (inputs y checkboxes)
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -29,65 +31,82 @@ function Register({ registerUser }) {
     }));
   };
 
-  // Valida los datos del formulario antes de registrar al usuario
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     const trimmedName = formData.name.trim();
+    const trimmedApellido = formData.apellido.trim();
     const trimmedEmail = formData.email.trim();
 
-    // Verifico que todos los campos estén completados
-    if (!trimmedName || !trimmedEmail || !formData.password || !formData.confirmPassword) {
+    // Validaciones locales primero — no hace falta llamar al backend si hay errores obvios
+    if (!trimmedName || !trimmedApellido || !trimmedEmail || !formData.password || !formData.confirmPassword) {
       setError('Por favor, completa todos los campos.');
       return;
     }
 
-    // Validación del nombre completo
-    if (trimmedName.length < 3) {
-      setError('El nombre completo debe tener al menos 3 caracteres.');
-      return;
-    }
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
-      setError('El nombre completo solo debe contener letras y espacios.');
+    if (trimmedName.length < 2) {
+      setError('El nombre debe tener al menos 2 caracteres.');
       return;
     }
 
-    // Validación de formato de correo electrónico
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
+      setError('El nombre solo debe contener letras y espacios.');
+      return;
+    }
+
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedApellido)) {
+      setError('El apellido solo debe contener letras y espacios.');
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      setError('El correo electrónico no tiene un formato válido (ej: usuario@correo.com).');
+      setError('El correo electrónico no tiene un formato válido.');
       return;
     }
 
-    // La contraseña debe tener al menos 4 caracteres (mínimo elegido para el proyecto)
-    if (formData.password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres.');
+    if (formData.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
-    // Las dos contraseñas ingresadas deben ser iguales
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden.');
       return;
     }
 
-    // El usuario debe aceptar los términos para poder registrarse
     if (!formData.acceptTerms) {
       setError('Debes aceptar los Términos de Servicio y la Política de Privacidad.');
       return;
     }
 
-    // Llamo a la función de registro del App (que también controla si el email ya existe)
-    const res = registerUser(trimmedName, trimmedEmail, formData.password);
-    if (res.success) {
-      navigate('/register-success');  // mando a la pantalla de éxito
-    } else {
-      setError(res.message);
+    setLoading(true);
+    try {
+      const registerResult = await registerUser({
+        nombre: trimmedName,
+        apellido: trimmedApellido,
+        email: trimmedEmail,
+        password: formData.password
+      });
+
+      if (registerResult.success) {
+        const loginResult = login(trimmedEmail, formData.password, registerResult.data);
+        if (loginResult.success) {
+          navigate('/register-success');
+        } else {
+          setError('La cuenta se creó, pero no se pudo iniciar la sesión automáticamente.');
+        }
+      } else {
+        setError(registerResult.message || 'Error al registrar. Intentá de nuevo.');
+      }
+    } catch (_) {
+      setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Si la imagen de la izquierda no carga, muestro la imagen alternativa
   const handleImageError = (e) => {
     e.target.src = "/assets/shirt-black.svg";
   };
@@ -96,7 +115,7 @@ function Register({ registerUser }) {
     <main className="max-w-5xl mx-auto px-4 py-12">
       <div className="bg-white rounded-2xl overflow-hidden shadow-xl border border-neutral-200/80 flex flex-col md:flex-row min-h-[550px]">
 
-        {/* Lado izquierdo: imagen de camiseta de Japón con overlay */}
+        {/* Lado izquierdo: imagen con overlay */}
         <div className="md:w-1/2 relative bg-neutral-900 overflow-hidden min-h-[350px] md:min-h-auto">
           <img
             src="/assets/shirt-blue.svg"
@@ -104,10 +123,7 @@ function Register({ registerUser }) {
             className="absolute inset-0 w-full h-full object-cover opacity-75"
             onError={handleImageError}
           />
-          {/* Overlay oscuro */}
           <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-900/30 to-neutral-950/20" />
-
-          {/* Tarjeta con glassmorphism y texto motivador */}
           <div className="absolute bottom-6 left-6 right-6 p-6 rounded-xl bg-neutral-950/50 backdrop-blur-md border border-white/10 text-white space-y-2">
             <h2 className="text-xl font-bold font-title leading-tight">Donde la pasión por el juego se une al arte artesanal.</h2>
             <p className="text-xs text-neutral-350 leading-relaxed">
@@ -116,30 +132,40 @@ function Register({ registerUser }) {
           </div>
         </div>
 
-        {/* Lado derecho: formulario de registro */}
+        {/* Lado derecho: formulario */}
         <div className="md:w-1/2 p-8 sm:p-12 flex flex-col justify-center space-y-5 bg-white">
           <div className="space-y-1">
             <h1 className="text-2xl font-extrabold text-antracita font-title">Crea tu cuenta</h1>
             <p className="text-xs text-neutral-450">Empieza hoy tu viaje futbolístico con nosotros.</p>
           </div>
 
-          {/* Mensaje de error de validación o del servidor */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-500 p-3.5 rounded-lg text-xs font-bold">
               {error}
             </div>
           )}
 
-          {/* Formulario de registro */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Nombre completo"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Juan Pérez"
-              required
-            />
+
+            {/* Nombre y apellido en dos columnas */}
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Nombre"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Juan"
+                required
+              />
+              <Input
+                label="Apellido"
+                name="apellido"
+                value={formData.apellido}
+                onChange={handleChange}
+                placeholder="Pérez"
+                required
+              />
+            </div>
 
             <Input
               label="Correo electrónico"
@@ -151,7 +177,6 @@ function Register({ registerUser }) {
               required
             />
 
-            {/* Los campos de contraseña van en dos columnas para que quepan juntos */}
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Contraseña"
@@ -159,7 +184,7 @@ function Register({ registerUser }) {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Mínimo 4 caract."
+                placeholder="Mínimo 6 caract."
                 required
               />
               <Input
@@ -173,7 +198,6 @@ function Register({ registerUser }) {
               />
             </div>
 
-            {/* Checkbox de aceptación de términos — obligatorio para registrarse */}
             <div className="flex items-start space-x-2.5 py-1">
               <input
                 type="checkbox"
@@ -189,15 +213,12 @@ function Register({ registerUser }) {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" variant="primary">
-                Crear mi cuenta
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? 'Creando cuenta...' : 'Crear mi cuenta'}
               </Button>
             </div>
           </form>
 
-
-
-          {/* Link para ir al login si ya tiene cuenta */}
           <div className="text-center text-xs text-neutral-500">
             ¿Ya tienes una cuenta?{' '}
             <Link to="/login" className="text-primary hover:underline font-bold">

@@ -24,7 +24,7 @@ function AdminUserAdd({ registerUser }) {
   };
 
   // Valida y envía el formulario para registrar el nuevo usuario
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
@@ -60,14 +60,12 @@ function AdminUserAdd({ registerUser }) {
       return;
     }
 
-    // Llamo a la función del App que valida y guarda el usuario
-    const res = registerUser(trimmedName, trimmedEmail, formData.password, formData.role);
+    const res = await registerUser(trimmedName, trimmedEmail, formData.password, formData.role);
     if (res.success) {
       setMessage({
         type: 'success',
         text: `¡Cuenta de tipo "${formData.role}" registrada con éxito! El usuario ya puede iniciar sesión.`
       });
-      // Limpio el formulario después de un registro exitoso
       setFormData({ name: '', email: '', password: '', role: 'admin' });
     } else {
       setMessage({ type: 'error', text: res.message });

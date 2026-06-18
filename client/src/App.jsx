@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { INITIAL_PRODUCTS } from './data/products'
-import { fetchProducts } from './services/api'
+import { fetchProducts, API_BASE_URL } from './services/api'
 
 // --- Componentes de layout ---
 import Layout from './components/layout/Layout'
@@ -43,25 +43,9 @@ function App() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState('');
 
-  // Usuario logueado actualmente. Limpio la sesión si el nombre era el del admin viejo
-  // (antes se llamaba "Admin Valen", ahora es genérico "Admin")
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('camisetas_user');
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        // Si encuentra al admin viejo, lo borra para forzar un nuevo login
-        if (parsed && parsed.name === 'Admin Valen') {
-          localStorage.removeItem('camisetas_user');
-          return null;
-        }
-        return parsed;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  // Usuario logueado actualmente.
+  // Ya no se carga desde localStorage para evitar depender de datos simulados del frontend.
+  const [user, setUser] = useState(null);
 
   // Carrito de compras: persisto los artículos por usuario para que cada uno tenga el suyo independiente
   const [cart, setCart] = useState(() => {
@@ -102,35 +86,6 @@ function App() {
       }
     }
     return [];
-  });
-
-  // Lista de todos los usuarios registrados (simula una base de datos en el front)
-  // Si existe el admin viejo "Admin Valen", lo reemplazo por el admin genérico
-  const [usersList, setUsersList] = useState(() => {
-    const saved = localStorage.getItem('camisetas_users_list');
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed)) {
-          const hasOldAdmin = parsed.some(u => u.name === 'Admin Valen');
-          if (hasOldAdmin) {
-            localStorage.removeItem('camisetas_users_list');
-            return [
-              { name: 'Admin', email: 'admin@tshirt.com', password: 'admin', role: 'admin' },
-              { name: 'Test User', email: 'test@tshirt.com', password: 'user', role: 'user' }
-            ];
-          }
-          return parsed;
-        }
-      } catch {
-        // Fallback below
-      }
-    }
-    // Datos por defecto la primera vez que se ejecuta la app
-    return [
-      { name: 'Admin', email: 'admin@tshirt.com', password: 'admin', role: 'admin' },
-      { name: 'Test User', email: 'test@tshirt.com', password: 'user', role: 'user' }
-    ];
   });
 
   // Favoritos: guarda los IDs de los productos marcados como favoritos
@@ -197,16 +152,8 @@ function App() {
   }, [cart, user]);
 
   useEffect(() => {
-    localStorage.setItem('camisetas_user', JSON.stringify(user));
-  }, [user]);
-
-  useEffect(() => {
     localStorage.setItem('camisetas_orders', JSON.stringify(orders));
   }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('camisetas_users_list', JSON.stringify(usersList));
-  }, [usersList]);
 
   useEffect(() => {
     localStorage.setItem('camisetas_favorites', JSON.stringify(favorites));
@@ -344,51 +291,109 @@ function App() {
 
   // ─── 4. Funciones de autenticación ───────────────────────────────────────
 
-  // Verifica email y contraseña contra la lista de usuarios guardada
-  // Devuelve un objeto con success: true/false para que el componente de login maneje la respuesta
-  const login = (email, password) => {
-    const foundUser = usersList.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (foundUser) {
-      const loggedUser = { name: foundUser.name, email: foundUser.email, role: foundUser.role };
-      setUser(loggedUser);
-      // Cargar el carrito específico de este usuario si ya existe
-      const savedCart = localStorage.getItem(`camisetas_cart_${loggedUser.email}`);
-      if (savedCart && savedCart !== 'null') {
-        try {
-          const parsed = JSON.parse(savedCart);
-          setCart(Array.isArray(parsed) ? parsed : []);
-        } catch {
-          setCart([]);
-        }
-      } else {
+
+  const login = (email, password, backendData = null) => {
+    const userData = backendData?.user || backendData?.usuario || backendData?.data?.user || backendData?.data?.usuario || backendData;
+    const role = userData?.role || userData?.rol || backendData?.role || backendData?.rol || backendData?.data?.role || backendData?.data?.rol;
+    const name = userData?.name || userData?.nombre || userData?.firstName || email.split('@')[0];
+    const apellido = userData?.apellido || userData?.lastName || userData?.surname || '';
+    const normalizedRole = String(role || '').toLowerCase();
+    const finalRole = normalizedRole === 'admin' || normalizedRole === 'administrator' || normalizedRole === 'administrador'
+      ? 'admin'
+      : 'user';
+
+    const loggedUser = {
+      name,
+      apellido,
+      email: userData?.email || email,
+      role: finalRole
+    };
+
+    setUser(loggedUser);
+
+    // Recupero el carrito asociado al usuario solo si existe en el navegador.
+    // No uso datos de usuarios almacenados localmente para decidir el login.
+    const savedCart = localStorage.getItem(`camisetas_cart_${loggedUser.email}`);
+    if (savedCart && savedCart !== 'null') {
+      try {
+        const parsed = JSON.parse(savedCart);
+        setCart(Array.isArray(parsed) ? parsed : []);
+      } catch {
         setCart([]);
       }
-      return { success: true, user: foundUser };
+    } else {
+      setCart([]);
     }
-    return { success: false, message: 'Credenciales incorrectas' };
+
+    return { success: true, user: loggedUser };
   };
 
-  // Cierra la sesión borrando el usuario del estado (también se borrará del localStorage por el useEffect)
+  // Cierra la sesión y también elimina el token JWT del navegador.
   const logout = () => {
     setUser(null);
-    setCart([]); // Vacía el carrito al cerrar sesión para no seguir viendo lo que se agregó
+    setCart([]);
+    localStorage.removeItem('camisetas_jwt');
   };
 
-  // Registra un nuevo usuario. Solo acepta el rol 'user', el admin es único y no se puede crear desde acá.
-  const registerUser = (name, email, password, role = 'user') => {
-    if (role === 'admin') {
-      return { success: false, message: 'No se pueden registrar más administradores.' };
+  // Registra un nuevo usuario usando el backend.
+  // No se valida más contra una lista local del frontend.
+  const registerUser = async (payloadOrName, maybeEmail, maybePassword, maybeRole = 'user') => {
+    try {
+      const isObjectPayload = payloadOrName && typeof payloadOrName === 'object' && !Array.isArray(payloadOrName);
+
+      const payload = isObjectPayload
+        ? payloadOrName
+        : {
+            nombre: payloadOrName || '',
+            apellido: maybeEmail && typeof maybeEmail === 'string' && maybeEmail.includes('@') ? '' : '',
+            email: maybeEmail || '',
+            password: maybePassword || '',
+            role: maybeRole || 'user'
+          };
+
+      const requestPayload = {
+        nombre: payload.nombre || payload.name || '',
+        apellido: payload.apellido || payload.lastName || payload.surname || '',
+        email: payload.email || '',
+        password: payload.password || ''
+      };
+
+      if (payload.role && payload.role !== 'user') {
+        requestPayload.role = payload.role;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestPayload)
+      });
+
+      const responseText = await response.text();
+      let data = null;
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        const message = data?.message || data?.error || data?.detail || responseText || 'No se pudo registrar el usuario.';
+        return { success: false, message };
+      }
+
+      const token = data?.token || data?.accessToken || data?.jwt || data?.data?.token;
+      if (token) {
+        localStorage.setItem('camisetas_jwt', token);
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error al registrar usuario:', error);
+      return { success: false, message: 'No se pudo conectar con el servidor.' };
     }
-    // Verifico que el email no esté ya registrado (sin distinguir mayúsculas)
-    const exists = usersList.some((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (exists) {
-      return { success: false, message: 'El correo electrónico ya está registrado.' };
-    }
-    const newUser = { name, email, password, role };
-    setUsersList((prev) => [...prev, newUser]);
-    return { success: true };
   };
 
 
@@ -544,7 +549,7 @@ function App() {
           <Route path="/checkout" element={<Checkout cart={enrichedCart} user={user} placeOrder={placeOrder} />} />
           <Route path="/order-success" element={<OrderSuccess orders={orders} />} />
           <Route path="/login" element={<Login user={user} login={login} />} />
-          <Route path="/register" element={<Register registerUser={registerUser} />} />
+          <Route path="/register" element={<Register registerUser={registerUser} login={login} />} />
           <Route path="/register-success" element={<RegisterSuccess />} />
           <Route path="/profile" element={<Profile user={user} logout={logout} orders={orders} />} />
           <Route path="/contact" element={<Contact />} />
