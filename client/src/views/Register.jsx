@@ -83,54 +83,22 @@ function Register({ registerUser, login }) {
 
     setLoading(true);
     try {
-      const payload = {
+      const registerResult = await registerUser({
         nombre: trimmedName,
         apellido: trimmedApellido,
         email: trimmedEmail,
         password: formData.password
-      };
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
       });
 
-      const responseText = await response.text();
-      let responseData = null;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch {
-        responseData = null;
-      }
-
-      if (response.ok) {
-        const token = responseData?.token || responseData?.accessToken || responseData?.jwt || responseData?.data?.token;
-        if (token) {
-          localStorage.setItem('camisetas_jwt', token);
-        }
-
-        registerUser(trimmedName, trimmedEmail, formData.password);
-        const loginResult = login(trimmedEmail, formData.password, responseData);
+      if (registerResult.success) {
+        const loginResult = login(trimmedEmail, formData.password, registerResult.data);
         if (loginResult.success) {
           navigate('/register-success');
         } else {
-          navigate('/register-success');
+          setError('La cuenta se creó, pero no se pudo iniciar la sesión automáticamente.');
         }
       } else {
-        if (responseData && responseData.message) {
-          setError(responseData.message);
-        } else if (responseData && responseData.error) {
-          setError(responseData.error);
-        } else if (response.status === 409) {
-          setError('El correo electrónico ya está registrado.');
-        } else if (responseText) {
-          setError(responseText);
-        } else {
-          setError('Error al registrar. Intentá de nuevo.');
-        }
+        setError(registerResult.message || 'Error al registrar. Intentá de nuevo.');
       }
     } catch (_) {
       setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
