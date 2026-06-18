@@ -37,7 +37,7 @@ La app queda disponible en `http://localhost:5173` (o el puerto que indique la t
 
 | Rol | Email | Contraseña |
 |---|---|---|
-| Admin | admin@mail.com | Password123! |
+| Admin | admin@uade.edu.ar | 123456 |
 
 ---
 
