@@ -1,17 +1,17 @@
 // Vista para agregar nuevos usuarios desde el panel admin
-// El admin puede crear cuentas con rol 'user' o 'admin' (aunque en práctica no puede crear más admins
-// porque la función registerUser del App lo bloquea).
+// Se usa el mismo contrato de registro que el formulario público, pero con control adicional
+// para evitar crear múltiples cuentas de administrador.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Input, Select, Button } from '../../components/ui/Form';
+import { Input, Button } from '../../components/ui/Form';
 
 function AdminUserAdd({ registerUser }) {
   // Estado del formulario con los datos del nuevo usuario
   const [formData, setFormData] = useState({
     name: '',
+    apellido: '',
     email: '',
-    password: '',
-    role: 'admin'  // por defecto propone rol de admin, pero el sistema lo puede rechazar
+    password: ''
   });
 
   // Mensaje de resultado: puede ser éxito o error
@@ -29,21 +29,22 @@ function AdminUserAdd({ registerUser }) {
     setMessage({ type: '', text: '' });
 
     const trimmedName = formData.name.trim();
+    const trimmedApellido = formData.apellido.trim();
     const trimmedEmail = formData.email.trim();
 
     // Todos los campos son obligatorios
-    if (!trimmedName || !trimmedEmail || !formData.password) {
+    if (!trimmedName || !trimmedApellido || !trimmedEmail || !formData.password) {
       setMessage({ type: 'error', text: 'Por favor, completa todos los campos.' });
       return;
     }
 
-    // Validación del nombre completo
-    if (trimmedName.length < 3) {
-      setMessage({ type: 'error', text: 'El nombre completo debe tener al menos 3 caracteres.' });
+    // Validación del nombre y apellido
+    if (trimmedName.length < 2 || trimmedApellido.length < 2) {
+      setMessage({ type: 'error', text: 'El nombre y el apellido deben tener al menos 2 caracteres.' });
       return;
     }
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
-      setMessage({ type: 'error', text: 'El nombre completo solo debe contener letras y espacios.' });
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName) || !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedApellido)) {
+      setMessage({ type: 'error', text: 'El nombre y el apellido solo deben contener letras y espacios.' });
       return;
     }
 
@@ -55,28 +56,29 @@ function AdminUserAdd({ registerUser }) {
     }
 
     // Validación de contraseña
-    if (formData.password.length < 4) {
-      setMessage({ type: 'error', text: 'La contraseña temporal debe tener al menos 4 caracteres.' });
+    if (formData.password.length < 6) {
+      setMessage({ type: 'error', text: 'La contraseña temporal debe tener al menos 6 caracteres.' });
       return;
     }
 
-    const res = await registerUser(trimmedName, trimmedEmail, formData.password, formData.role);
+    const res = await registerUser({
+      nombre: trimmedName,
+      apellido: trimmedApellido,
+      email: trimmedEmail,
+      password: formData.password,
+      role: 'user'
+    });
+
     if (res.success) {
       setMessage({
         type: 'success',
-        text: `¡Cuenta de tipo "${formData.role}" registrada con éxito! El usuario ya puede iniciar sesión.`
+        text: '¡Cuenta de tipo cliente registrada con éxito! El usuario ya puede iniciar sesión.'
       });
-      setFormData({ name: '', email: '', password: '', role: 'admin' });
+      setFormData({ name: '', apellido: '', email: '', password: '' });
     } else {
       setMessage({ type: 'error', text: res.message });
     }
   };
-
-  // Opciones disponibles para el selector de rol
-  const roleOptions = [
-    { value: 'admin', label: 'Administrador (Acceso total)' },
-    { value: 'user', label: 'Cliente (Sólo compras)' }
-  ];
 
   return (
     <div className="space-y-6 text-antracita">
@@ -84,7 +86,7 @@ function AdminUserAdd({ registerUser }) {
       {/* Encabezado del formulario */}
       <header className="border-b border-neutral-200 pb-5">
         <h1 className="text-2xl font-extrabold text-antracita font-title">Agregar Usuario</h1>
-        <p className="text-xs text-neutral-500 font-semibold uppercase tracking-wider mt-1">Registra nuevos perfiles en el sistema, definiendo su nivel de acceso.</p>
+        <p className="text-xs text-neutral-500 font-semibold uppercase tracking-wider mt-1">Registra nuevos perfiles en el sistema (solo con rol user)</p>
       </header>
 
       {/* Mensaje de resultado (éxito en verde, error en rojo) */}
@@ -101,14 +103,24 @@ function AdminUserAdd({ registerUser }) {
       {/* Tarjeta con el formulario */}
       <section className="bg-white border border-neutral-200 rounded-xl p-6 sm:p-8 max-w-2xl shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
-            label="Nombre Completo"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Juan Carlos"
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nombre"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Juan"
+              required
+            />
+            <Input
+              label="Apellido"
+              name="apellido"
+              value={formData.apellido}
+              onChange={handleChange}
+              placeholder="Pérez"
+              required
+            />
+          </div>
 
           <Input
             label="Correo Electrónico"
@@ -128,16 +140,6 @@ function AdminUserAdd({ registerUser }) {
             value={formData.password}
             onChange={handleChange}
             placeholder="Min. 4 caracteres"
-            required
-          />
-
-          {/* Selector del rol que tendrá el nuevo usuario en el sistema */}
-          <Select
-            label="Rol de Cuenta / Permisos"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            options={roleOptions}
             required
           />
 
