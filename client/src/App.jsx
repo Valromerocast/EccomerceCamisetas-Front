@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { INITIAL_PRODUCTS } from './data/products'
 import {
+  addFavorite,
   addCartItem,
   changeOrderStatus,
   clearAuthToken,
@@ -14,10 +15,12 @@ import {
   createProduct as createProductRequest,
   createProductVariant,
   deleteCartItem,
+  deleteFavorite,
   deleteProduct as deleteProductRequest,
   deleteProductVariant,
   fetchCart,
   fetchCurrentUser,
+  fetchFavorites,
   fetchOrders,
   fetchProducts,
   getAuthToken,
@@ -108,19 +111,21 @@ function App() {
     }
   };
 
-  // Favoritos: guarda los IDs de los productos marcados como favoritos
-  const [favorites, setFavorites] = useState(() => {
-    const saved = localStorage.getItem('camisetas_favorites');
-    if (saved && saved !== 'null') {
-      try {
-        const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
+  // Los favoritos pertenecen al usuario autenticado y se persisten en el backend.
+  const [favorites, setFavorites] = useState([]);
+
+  const getUserFavorites = async (currentUser) => {
+    if (currentUser.role !== 'user') {
+      return [];
     }
-    return [];
-  });
+
+    try {
+      return await fetchFavorites();
+    } catch (error) {
+      console.error('No se pudieron cargar los favoritos:', error);
+      return [];
+    }
+  };
 
 
   // ─── 2. Sincronización con localStorage ──────────────────────────────────
@@ -176,15 +181,17 @@ function App() {
 
       try {
         const currentUser = await fetchCurrentUser();
-        const [restoredCart, restoredOrders] = await Promise.all([
+        const [restoredCart, restoredOrders, restoredFavorites] = await Promise.all([
           getUserCart(currentUser),
-          getOrders()
+          getOrders(),
+          getUserFavorites(currentUser)
         ]);
 
         if (isMounted) {
           setUser(currentUser);
           setCart(restoredCart);
           setOrders(restoredOrders);
+          setFavorites(restoredFavorites);
         }
       } catch (error) {
         console.error('No se pudo restaurar la sesión:', error);
@@ -193,6 +200,7 @@ function App() {
         if (isMounted) {
           setUser(null);
           setCart([]);
+          setFavorites([]);
         }
       } finally {
         if (isMounted) {
@@ -208,17 +216,44 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('camisetas_favorites', JSON.stringify(favorites));
-  }, [favorites]);
+  // Alterna el favorito en la base de datos y revierte el cambio visual si falla.
+  const toggleFavorite = async (productId) => {
+    if (!user) {
+      window.location.href = '/login';
+      return false;
+    }
 
-  // Alterna el estado de favorito de un producto
-  const toggleFavorite = (productId) => {
-    setFavorites((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
-    );
+    if (user.role === 'admin') {
+      alert('Los administradores no pueden guardar favoritos.');
+      return false;
+    }
+
+    const normalizedId = Number(productId);
+    const wasFavorite = favorites.includes(normalizedId);
+
+    setFavorites((currentFavorites) => (
+      wasFavorite
+        ? currentFavorites.filter((id) => id !== normalizedId)
+        : [...currentFavorites, normalizedId]
+    ));
+
+    try {
+      if (wasFavorite) {
+        await deleteFavorite(normalizedId);
+      } else {
+        await addFavorite(normalizedId);
+      }
+      return true;
+    } catch (error) {
+      console.error('No se pudo actualizar el favorito:', error);
+      setFavorites((currentFavorites) => (
+        wasFavorite
+          ? [...new Set([...currentFavorites, normalizedId])]
+          : currentFavorites.filter((id) => id !== normalizedId)
+      ));
+      alert(error.message || 'No se pudo actualizar el favorito.');
+      return false;
+    }
   };
 
 
@@ -342,13 +377,15 @@ function App() {
   const login = async (email, password) => {
     try {
       const loggedUser = await loginUser(email, password);
-      const [userCart, userOrders] = await Promise.all([
+      const [userCart, userOrders, userFavorites] = await Promise.all([
         getUserCart(loggedUser),
-        getOrders()
+        getOrders(),
+        getUserFavorites(loggedUser)
       ]);
       setUser(loggedUser);
       setCart(userCart);
       setOrders(userOrders);
+      setFavorites(userFavorites);
       return { success: true, user: loggedUser };
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
@@ -366,6 +403,7 @@ function App() {
     setCartError('');
     setOrders([]);
     setOrdersError('');
+    setFavorites([]);
     clearAuthToken();
   };
 
@@ -379,13 +417,15 @@ function App() {
         password: payload.password || ''
       });
 
-      const [userCart, userOrders] = await Promise.all([
+      const [userCart, userOrders, userFavorites] = await Promise.all([
         getUserCart(currentUser),
-        getOrders()
+        getOrders(),
+        getUserFavorites(currentUser)
       ]);
       setUser(currentUser);
       setCart(userCart);
       setOrders(userOrders);
+      setFavorites(userFavorites);
       return { success: true, user: currentUser };
     } catch (error) {
       console.error('Error al registrar usuario:', error);

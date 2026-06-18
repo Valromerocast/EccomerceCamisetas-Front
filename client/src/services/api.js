@@ -169,6 +169,23 @@ export function clearCartItems() {
   });
 }
 
+export async function fetchFavorites() {
+  const favoritos = await request('/api/favoritos');
+  return favoritos.map((favorito) => Number(favorito.camisetaId));
+}
+
+export function addFavorite(camisetaId) {
+  return request(`/api/favoritos/${camisetaId}`, {
+    method: 'POST'
+  });
+}
+
+export function deleteFavorite(camisetaId) {
+  return request(`/api/favoritos/${camisetaId}`, {
+    method: 'DELETE'
+  });
+}
+
 function mapOrderStatus(status) {
   const normalized = String(status || '').trim().toUpperCase();
   const labels = {
