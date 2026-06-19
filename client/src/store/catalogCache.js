@@ -3,16 +3,16 @@ const OPTIONS_CACHE_KEY = 'mundialista_catalog_options_v1';
 const PRODUCTS_MAX_AGE_MS = 30 * 60 * 1000;
 const OPTIONS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-function readCache(key, maxAgeMs) {
+function readCache(key, maxAgeMs, isValidValue) {
   try {
     const rawValue = localStorage.getItem(key);
     if (!rawValue) return null;
 
     const cached = JSON.parse(rawValue);
     const isValid = cached
-      && Array.isArray(cached.value)
       && Number.isFinite(cached.savedAt)
-      && Date.now() - cached.savedAt < maxAgeMs;
+      && Date.now() - cached.savedAt < maxAgeMs
+      && isValidValue(cached.value);
 
     if (!isValid) {
       localStorage.removeItem(key);
@@ -42,7 +42,7 @@ function writeCache(key, value) {
 }
 
 export function getCachedProducts() {
-  return readCache(PRODUCTS_CACHE_KEY, PRODUCTS_MAX_AGE_MS);
+  return readCache(PRODUCTS_CACHE_KEY, PRODUCTS_MAX_AGE_MS, Array.isArray);
 }
 
 export function cacheProducts(products) {
@@ -50,10 +50,17 @@ export function cacheProducts(products) {
 }
 
 export function getCachedCatalogOptions() {
-  const entries = readCache(OPTIONS_CACHE_KEY, OPTIONS_MAX_AGE_MS);
-  return entries?.[0] || null;
+  return readCache(
+    OPTIONS_CACHE_KEY,
+    OPTIONS_MAX_AGE_MS,
+    (value) => value
+      && Array.isArray(value.countries)
+      && Array.isArray(value.types)
+      && Array.isArray(value.genders)
+      && Array.isArray(value.sizes)
+  );
 }
 
 export function cacheCatalogOptions(options) {
-  writeCache(OPTIONS_CACHE_KEY, [options]);
+  writeCache(OPTIONS_CACHE_KEY, options);
 }

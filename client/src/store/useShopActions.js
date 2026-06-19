@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../components/ui/useNotification';
 import {
   createAdminUser,
@@ -35,6 +36,7 @@ import { selectEnrichedCart, selectUser } from './selectors';
 
 export function useShopActions() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { showNotification } = useNotification();
   const user = useSelector(selectUser);
   const cart = useSelector(selectEnrichedCart);
@@ -45,9 +47,9 @@ export function useShopActions() {
   ]);
 
   return {
-    login: async (email, password) => {
+    login: async (email, password, rememberMe = false) => {
       try {
-        const loggedUser = await dispatch(loginThunk({ email, password })).unwrap();
+        const loggedUser = await dispatch(loginThunk({ email, password, rememberMe })).unwrap();
         await loadUserData(loggedUser);
         return { success: true, user: loggedUser };
       } catch (message) {
@@ -79,7 +81,7 @@ export function useShopActions() {
     },
     toggleFavorite: async (productId) => {
       if (!user) {
-        window.location.href = '/login';
+        navigate('/login');
         return false;
       }
       try {
@@ -92,7 +94,7 @@ export function useShopActions() {
     },
     addToCart: async (product, quantity, size) => {
       if (!user) {
-        window.location.href = '/login';
+        navigate('/login');
         return false;
       }
       try {

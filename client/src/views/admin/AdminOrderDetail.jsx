@@ -85,7 +85,7 @@ function AdminOrderDetail() {
     : 'CL';
 
   // Cálculos de resumen de precios
-  const subtotal = order.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = order.items.reduce((sum, item) => sum + item.subtotal, 0);
   const grandTotal = order.total;
 
   // Genera eventos dinámicos de la línea de tiempo según el estado actual
@@ -263,7 +263,7 @@ function AdminOrderDetail() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-antracita text-xs">x{item.quantity}</p>
-                    <p className="font-bold text-neutral-500 mt-1">${(item.product.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-bold text-neutral-500 mt-1">${item.subtotal.toFixed(2)}</p>
                   </div>
                 </li>
               ))}

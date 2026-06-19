@@ -2,6 +2,7 @@ import { getTeamCrest } from '../utils/teamCrest';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const TOKEN_STORAGE_KEY = 'camisetas_jwt';
+const AUTH_EXPIRED_EVENT = 'mundialista:auth-expired';
 const SIZE_ORDER = ['S', 'M', 'L', 'XL'];
 
 async function request(path, options = {}) {
@@ -30,6 +31,11 @@ async function request(path, options = {}) {
   });
 
   if (!response.ok) {
+    if (auth && response.status === 401) {
+      clearAuthToken();
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
+
     const responseText = await response.text();
     let responseData;
 
@@ -58,19 +64,23 @@ async function request(path, options = {}) {
 }
 
 export function getAuthToken() {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
+  return localStorage.getItem(TOKEN_STORAGE_KEY)
+    || sessionStorage.getItem(TOKEN_STORAGE_KEY);
 }
 
 export function clearAuthToken() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
-function saveAuthToken(token) {
+function saveAuthToken(token, persistent = true) {
   if (!token) {
     throw new Error('El backend no devolvió un token de autenticación.');
   }
 
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  clearAuthToken();
+  const storage = persistent ? localStorage : sessionStorage;
+  storage.setItem(TOKEN_STORAGE_KEY, token);
 }
 
 function mapAuthenticatedUser(usuario) {
@@ -98,14 +108,14 @@ export async function fetchCurrentUser() {
   return mapAuthenticatedUser(usuario);
 }
 
-async function authenticate(path, payload) {
+async function authenticate(path, payload, persistent = true) {
   const authResponse = await request(path, {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload)
   });
 
-  saveAuthToken(authResponse?.token);
+  saveAuthToken(authResponse?.token, persistent);
 
   try {
     return await fetchCurrentUser();
@@ -115,8 +125,8 @@ async function authenticate(path, payload) {
   }
 }
 
-export function loginUser(email, password) {
-  return authenticate('/api/auth/login', { email, password });
+export function loginUser(email, password, rememberMe = false) {
+  return authenticate('/api/auth/login', { email, password }, rememberMe);
 }
 
 export function registerUser(payload) {
@@ -500,4 +510,4 @@ export function deleteProductVariant(variantId) {
   });
 }
 
-export { API_BASE_URL };
+export { API_BASE_URL, AUTH_EXPIRED_EVENT };

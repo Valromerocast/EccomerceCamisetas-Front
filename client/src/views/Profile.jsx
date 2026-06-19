@@ -143,7 +143,7 @@ function Profile() {
                           <span>
                             {item.product.name} ({item.size}) <strong className="text-neutral-450">x{item.quantity}</strong>
                           </span>
-                          <span className="text-antracita font-semibold">${(item.product.price * item.quantity).toFixed(2)}</span>
+                          <span className="text-antracita font-semibold">${item.subtotal.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>

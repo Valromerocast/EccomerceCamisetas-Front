@@ -20,9 +20,12 @@ export const restoreSession = createAsyncThunk('auth/restoreSession', async (_, 
   }
 });
 
-export const login = createAsyncThunk('auth/login', async ({ email, password }, { rejectWithValue }) => {
+export const login = createAsyncThunk('auth/login', async (
+  { email, password, rememberMe },
+  { rejectWithValue }
+) => {
   try {
-    return await loginUser(email, password);
+    return await loginUser(email, password, rememberMe);
   } catch (error) {
     return rejectWithValue(error?.status === 401 ? 'Credenciales incorrectas.' : errorMessage(error, 'No se pudo iniciar sesión.'));
   }

@@ -22,10 +22,21 @@ export const selectEnrichedOrders = createSelector(
     userName: order.userEmail === user?.email
       ? `${user.name} ${user.apellido || ''}`.trim()
       : order.userName,
-    items: order.items.map((item) => ({
-      ...item,
-      product: products.find((product) => product.id === item.productId) || item.product
-    }))
+    items: order.items.map((item) => {
+      const currentProduct = products.find((product) => product.id === item.productId);
+      if (!currentProduct) return item;
+
+      return {
+        ...item,
+        product: {
+          ...currentProduct,
+          name: item.product.name,
+          price: item.product.price,
+          image: currentProduct.image || item.product.image,
+          fallbackImage: currentProduct.fallbackImage || item.product.fallbackImage
+        }
+      };
+    })
   }))
 );
 

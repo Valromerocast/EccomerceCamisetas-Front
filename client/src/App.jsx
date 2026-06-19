@@ -23,17 +23,30 @@ import AdminProductEdit from './views/admin/AdminProductEdit';
 import AdminSales from './views/admin/AdminSales';
 import AdminUserAdd from './views/admin/AdminUserAdd';
 import AdminOrderDetail from './views/admin/AdminOrderDetail';
-import { restoreSession } from './store/slices/authSlice';
+import { logout, restoreSession } from './store/slices/authSlice';
 import { loadProducts } from './store/slices/productsSlice';
-import { loadCart } from './store/slices/cartSlice';
-import { loadFavorites } from './store/slices/favoritesSlice';
-import { loadOrders } from './store/slices/ordersSlice';
+import { loadCart, resetCart } from './store/slices/cartSlice';
+import { loadFavorites, resetFavorites } from './store/slices/favoritesSlice';
+import { loadOrders, resetOrders } from './store/slices/ordersSlice';
 import { selectAuthReady, selectUser } from './store/selectors';
+import { AUTH_EXPIRED_EVENT } from './services/api';
 
 function App() {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const authReady = useSelector(selectAuthReady);
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      dispatch(logout());
+      dispatch(resetCart());
+      dispatch(resetFavorites());
+      dispatch(resetOrders());
+    };
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession);
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(loadProducts());

@@ -16,7 +16,8 @@ function AdminSales() {
 
   // ─── Cálculo de métricas ──────────────────────────────────────────────────
   // Suma el total de todas las órdenes para obtener los ingresos acumulados
-  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+  const activeOrders = orders.filter((order) => order.status !== 'Cancelado');
+  const totalRevenue = activeOrders.reduce((sum, order) => sum + order.total, 0);
 
   // Cuenta pedidos en estado "Procesando" (pendientes de despachar)
   const pendingOrders = orders.filter((o) => o.status === 'Procesando').length;
@@ -29,8 +30,8 @@ function AdminSales() {
 
   // Tasa de entrega = pedidos entregados / total de pedidos × 100
   // Si no hay pedidos, muestro 100% como valor por defecto
-  const deliveryRate = orders.length > 0
-    ? ((deliveredOrders / orders.length) * 100).toFixed(1) + '%'
+  const deliveryRate = activeOrders.length > 0
+    ? ((deliveredOrders / activeOrders.length) * 100).toFixed(1) + '%'
     : '100.0%';
 
   // Filtrado de pedidos según la pestaña seleccionada
@@ -69,7 +70,7 @@ function AdminSales() {
 
         {/* Métrica 1: Ventas totales acumuladas */}
         <article className="bg-white border border-neutral-200 p-5 rounded-xl space-y-1.5 shadow-sm">
-          <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider block">Ventas Hoy</span>
+          <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider block">Ventas acumuladas</span>
           <strong className="text-2xl font-black text-primary font-title block">${totalRevenue.toFixed(2)}</strong>
           <span className="text-[9px] text-neutral-450 block font-semibold">Total acumulado</span>
         </article>

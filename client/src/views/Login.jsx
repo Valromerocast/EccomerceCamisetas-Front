@@ -66,15 +66,14 @@ function Login() {
 
     setLoading(true);
     try {
-      const result = await login(emailTrimmed, formData.password);
+      const result = await login(emailTrimmed, formData.password, formData.rememberMe);
 
       if (result.success) {
         navigate(result.user.role === 'admin' ? '/admin/sales' : '/profile');
       } else {
         setError(result.message || 'No se pudo iniciar sesión.');
       }
-    } catch (err) {
-      console.error('Error de red al hacer login:', err);
+    } catch {
       setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
     } finally {
       setLoading(false);
@@ -137,14 +136,10 @@ function Login() {
             />
 
             <div>
-              {/* Label de contraseña con link de "olvidé mi contraseña" a la derecha */}
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex items-center mb-1">
                 <label className="text-[10px] font-bold text-antracita/60 tracking-wider uppercase">
                   Contraseña <span className="text-red-500">*</span>
                 </label>
-                <a href="#" className="text-[10px] font-bold text-primary hover:underline">
-                  ¿Olvidaste tu contraseña?
-                </a>
               </div>
               <input
                 type="password"
@@ -157,7 +152,7 @@ function Login() {
               />
             </div>
 
-            {/* Checkbox "recordarme" — en este proyecto es decorativo, no implementa persistencia extendida */}
+            {/* Sin marcar, la sesión dura solamente hasta cerrar la pestaña. */}
             <div className="flex items-center space-x-2.5 py-1">
               <input
                 type="checkbox"

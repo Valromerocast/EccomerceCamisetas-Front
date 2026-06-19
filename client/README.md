@@ -40,6 +40,7 @@ También es posible registrar un usuario comprador desde la aplicación.
 ## Funcionalidades
 
 - Registro, login y restauración de sesión mediante JWT.
+- La opción "Recordarme" elige entre persistencia local o por pestaña.
 - Catálogo conectado al backend con búsqueda, ordenamiento y filtros.
 - Filtros por país, tipo, género, talle con stock y precio.
 - Detalle de producto y selección de talle y cantidad.
@@ -89,6 +90,8 @@ store/
 - Las acciones se despachan desde `useShopActions`, que adapta los resultados
   de Redux a los flujos visuales de la aplicación.
 - Los estados puramente visuales y formularios continúan usando `useState`.
+- Las respuestas `401` eliminan la sesión vencida y limpian los datos privados
+  del store.
 
 ## Rutas principales
 

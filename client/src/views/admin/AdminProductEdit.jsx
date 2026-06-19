@@ -6,6 +6,10 @@ import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
 import { useSelector } from 'react-redux';
 import { selectProducts } from '../../store/selectors';
 import { useShopActions } from '../../store/useShopActions';
+import {
+  cacheCatalogOptions,
+  getCachedCatalogOptions
+} from '../../store/catalogCache';
 
 function findOptionId(options, name) {
   return String(options.find((option) => option.nombre === name)?.id || '');
@@ -101,6 +105,9 @@ function ProductForm({ product, options, addProduct, updateProduct }) {
     };
 
     const normalizedName = name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const skuToken = product?.id
+      ? String(product.id)
+      : crypto.randomUUID().split('-')[0].toUpperCase();
     const variants = selectedSizes.map((size) => {
       const existing = product?.variants?.find((variant) => variant.talle === size.nombre);
 
@@ -108,7 +115,7 @@ function ProductForm({ product, options, addProduct, updateProduct }) {
         sizeName: size.nombre,
         talleId: Number(size.id),
         stock: Number.parseInt(formData.stock[size.nombre], 10) || 0,
-        sku: existing?.sku || `${normalizedName || 'CAMISETA'}-${size.nombre}-${product?.id || 'NUEVA'}`,
+        sku: existing?.sku || `${normalizedName || 'CAMISETA'}-${size.nombre}-${skuToken}`,
         color: formData.color.trim() || existing?.color || 'Único'
       };
     });
@@ -232,15 +239,22 @@ function AdminProductEdit() {
   const { id } = useParams();
   const isEditMode = Boolean(id);
   const product = isEditMode ? products.find((item) => item.id === Number(id)) : null;
-  const [options, setOptions] = useState(null);
+  const [options, setOptions] = useState(() => getCachedCatalogOptions());
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
+    if (options) {
+      return undefined;
+    }
+
     let active = true;
 
     fetchCatalogOptions()
       .then((catalogOptions) => {
-        if (active) setOptions(catalogOptions);
+        if (active) {
+          cacheCatalogOptions(catalogOptions);
+          setOptions(catalogOptions);
+        }
       })
       .catch((error) => {
         if (active) setLoadError(error.message || 'No se pudieron cargar los catálogos.');
@@ -249,7 +263,7 @@ function AdminProductEdit() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [options]);
 
   if (loadError) {
     return <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg text-sm">{loadError}</div>;
