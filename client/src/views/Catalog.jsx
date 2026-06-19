@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import ProductFilters from '../components/product/ProductFilters';
 import ProductGrid from '../components/product/ProductGrid';
-import { fetchCatalogOptions, fetchProducts } from '../services/api';
+import { fetchCatalogOptions } from '../services/api';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 import { useSelector } from 'react-redux';
 import { selectFavorites, selectProducts, selectUser } from '../store/selectors';
 import { useShopActions } from '../store/useShopActions';
+import {
+  cacheCatalogOptions,
+  getCachedCatalogOptions
+} from '../store/catalogCache';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -18,7 +22,12 @@ const DEFAULT_FILTERS = {
   maxPrice: '',
   sortBy: 'default'
 };
-
+const EMPTY_CATALOG_OPTIONS = {
+  countries: [],
+  types: [],
+  genders: [],
+  sizes: []
+};
 function Catalog() {
   const user = useSelector(selectUser);
   const products = useSelector(selectProducts);
@@ -38,16 +47,15 @@ function Catalog() {
     maxPrice: searchParams.get('maxPrice') || '',
     sortBy: searchParams.get('sort') || 'default'
   }), [searchParams]);
-  const [catalogProducts, setCatalogProducts] = useState(products);
-  const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState('');
-  const [optionsLoading, setOptionsLoading] = useState(true);
-  const [options, setOptions] = useState({
-    countries: [],
-    types: [],
-    genders: [],
-    sizes: []
+  const [catalogOptionsState, setCatalogOptionsState] = useState(() => {
+    const cachedOptions = getCachedCatalogOptions();
+    return {
+      options: cachedOptions || EMPTY_CATALOG_OPTIONS,
+      loading: !cachedOptions
+    };
   });
+  const { options, loading: optionsLoading } = catalogOptionsState;
 
   const minimum = filters.minPrice === '' ? null : Number(filters.minPrice);
   const maximum = filters.maxPrice === '' ? null : Number(filters.maxPrice);
@@ -56,80 +64,28 @@ function Catalog() {
     : '';
 
   useEffect(() => {
+    if (!optionsLoading) {
+      return undefined;
+    }
+
     const controller = new AbortController();
 
     async function loadOptions() {
       try {
         const result = await fetchCatalogOptions({ signal: controller.signal });
-        setOptions(result);
+        cacheCatalogOptions(result);
+        setCatalogOptionsState({ options: result, loading: false });
       } catch (error) {
         if (error.name !== 'AbortError') {
           setCatalogError('No se pudieron cargar las opciones de filtro.');
+          setCatalogOptionsState((current) => ({ ...current, loading: false }));
         }
-      } finally {
-        setOptionsLoading(false);
       }
     }
 
     loadOptions();
     return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    if (optionsLoading) {
-      return undefined;
-    }
-
-    if (priceError) {
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setCatalogLoading(true);
-      setCatalogError('');
-
-      const typeName = filters.category === 'Titulares'
-        ? 'Titular'
-        : filters.category === 'Suplentes'
-          ? 'Alternativa'
-          : '';
-      const type = options.types.find(
-        (item) => item.nombre.toLowerCase() === typeName.toLowerCase()
-      );
-
-      try {
-        const result = await fetchProducts({
-          search: filters.search,
-          countryId: filters.countryId,
-          typeId: type?.id || '',
-          genderId: filters.genderId,
-          size: filters.size,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice,
-          sortBy: filters.sortBy
-        }, { signal: controller.signal });
-
-        if (!controller.signal.aborted) {
-          setCatalogProducts(result);
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          setCatalogProducts([]);
-          setCatalogError('No se pudo actualizar el catalogo.');
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setCatalogLoading(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [filters, options.types, optionsLoading, priceError]);
+  }, [optionsLoading]);
 
   const availableCountries = useMemo(() => {
     const countryNames = new Set(products.map((product) => product.country));
@@ -143,18 +99,63 @@ function Catalog() {
     return options.sizes.filter((size) => sizeNames.has(size.nombre));
   }, [options.sizes, products]);
 
-  const hasActiveFilters = Boolean(
-    filters.search
-    || filters.category
-    || filters.countryId
-    || filters.genderId
-    || filters.size
-    || filters.minPrice !== ''
-    || filters.maxPrice !== ''
-    || filters.sortBy !== 'default'
-  );
-  const currentCatalogProducts = hasActiveFilters ? catalogProducts : products;
-  const filteredCatalogProducts = priceError ? [] : currentCatalogProducts;
+  const selectedCountry = options.countries.find(
+    (country) => String(country.id) === String(filters.countryId)
+  )?.nombre;
+  const selectedGender = options.genders.find(
+    (gender) => String(gender.id) === String(filters.genderId)
+  )?.nombre;
+  const filteredCatalogProducts = useMemo(() => {
+    if (priceError) return [];
+
+    const search = filters.search.trim().toLowerCase();
+    const normalizeGender = (value) => (
+      String(value || '').trim().toLowerCase() === 'hombre'
+        ? 'masculino'
+        : String(value || '').trim().toLowerCase()
+    );
+    const filtered = products.filter((product) => {
+      const matchesSearch = !search || [
+        product.name,
+        product.subtitle,
+        product.country,
+        product.description
+      ].some((value) => String(value || '').toLowerCase().includes(search));
+      const matchesCategory = !filters.category
+        || filters.category === 'favoritos'
+        || product.category === filters.category;
+      const matchesCountry = !selectedCountry || product.country === selectedCountry;
+      const matchesGender = !selectedGender
+        || normalizeGender(product.gender) === normalizeGender(selectedGender);
+      const matchesSize = !filters.size || Number(product.stock?.[filters.size]) > 0;
+      const matchesMinimum = minimum === null || product.price >= minimum;
+      const matchesMaximum = maximum === null || product.price <= maximum;
+
+      return matchesSearch
+        && matchesCategory
+        && matchesCountry
+        && matchesGender
+        && matchesSize
+        && matchesMinimum
+        && matchesMaximum;
+    });
+
+    return [...filtered].sort((left, right) => {
+      if (filters.sortBy === 'price-asc') return left.price - right.price;
+      if (filters.sortBy === 'price-desc') return right.price - left.price;
+      if (filters.sortBy === 'name-asc') return left.name.localeCompare(right.name);
+      if (filters.sortBy === 'name-desc') return right.name.localeCompare(left.name);
+      return 0;
+    });
+  }, [
+    filters,
+    maximum,
+    minimum,
+    priceError,
+    products,
+    selectedCountry,
+    selectedGender
+  ]);
   const displayedProducts = filters.category === 'favoritos'
     ? filteredCatalogProducts.filter((product) => favorites.includes(product.id))
     : filteredCatalogProducts;
@@ -191,7 +192,7 @@ function Catalog() {
         ? 'Mis Favoritas'
         : 'Catalogo de Camisetas';
 
-  const loading = !priceError && (catalogLoading || (productsLoading && products.length === 0));
+  const loading = !priceError && productsLoading && products.length === 0;
   const error = priceError || catalogError || productsError;
   useScrollOnMessage(error);
 

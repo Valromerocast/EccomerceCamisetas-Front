@@ -8,27 +8,43 @@ import {
   updateProduct as updateProductRequest,
   updateProductVariant
 } from '../../services/api';
+import { cacheProducts, getCachedProducts } from '../catalogCache';
 
-export const loadProducts = createAsyncThunk('products/load', async (_, { rejectWithValue }) => {
-  try {
-    return await fetchProducts();
-  } catch (error) {
-    return rejectWithValue(error?.message || 'No se pudo cargar el catálogo desde el backend.');
+const cachedProducts = getCachedProducts();
+
+export const loadProducts = createAsyncThunk(
+  'products/load',
+  async (_, { rejectWithValue }) => {
+    try {
+      const products = await fetchProducts();
+      cacheProducts(products);
+      return products;
+    } catch (error) {
+      return rejectWithValue(error?.message || 'No se pudo cargar el catálogo desde el backend.');
+    }
+  },
+  {
+    condition: (options, { getState }) => (
+      Boolean(options?.force) || !getState().products.cacheReady
+    )
   }
-});
+);
 
-export const addProduct = createAsyncThunk('products/add', async ({ product, variants }, { dispatch, rejectWithValue }) => {
+export const addProduct = createAsyncThunk('products/add', async (
+  { product, variants },
+  { dispatch, rejectWithValue }
+) => {
   try {
-    const created = await createProduct(product);
-    for (const variant of variants) {
-      await createProductVariant(created.id, {
+    const created = await createProduct({
+      ...product,
+      variantes: variants.map((variant) => ({
         talleId: variant.talleId,
         stock: variant.stock,
         sku: variant.sku,
         color: variant.color
-      });
-    }
-    await dispatch(loadProducts()).unwrap();
+      }))
+    });
+    await dispatch(loadProducts({ force: true })).unwrap();
     return created.id;
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo crear el producto.');
@@ -61,16 +77,20 @@ export const updateProduct = createAsyncThunk('products/update', async (
       if (!requestedSizes.has(existing.talle)) await deleteProductVariant(existing.id);
     }
 
-    await dispatch(loadProducts()).unwrap();
+    await dispatch(loadProducts({ force: true })).unwrap();
     return productId;
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo actualizar el producto.');
   }
 });
 
-export const deleteProduct = createAsyncThunk('products/delete', async (productId, { rejectWithValue }) => {
+export const deleteProduct = createAsyncThunk('products/delete', async (
+  productId,
+  { getState, rejectWithValue }
+) => {
   try {
     await deleteProductRequest(productId);
+    cacheProducts(getState().products.items.filter((product) => product.id !== productId));
     return productId;
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo eliminar el producto.');
@@ -79,7 +99,12 @@ export const deleteProduct = createAsyncThunk('products/delete', async (productI
 
 const productsSlice = createSlice({
   name: 'products',
-  initialState: { items: [], loading: false, error: '' },
+  initialState: {
+    items: cachedProducts || [],
+    cacheReady: cachedProducts !== null,
+    loading: false,
+    error: ''
+  },
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -89,10 +114,10 @@ const productsSlice = createSlice({
       })
       .addCase(loadProducts.fulfilled, (state, action) => {
         state.items = action.payload;
+        state.cacheReady = true;
         state.loading = false;
       })
       .addCase(loadProducts.rejected, (state, action) => {
-        state.items = [];
         state.loading = false;
         state.error = action.payload;
       })

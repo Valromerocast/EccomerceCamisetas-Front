@@ -139,7 +139,7 @@ export function useShopActions() {
           paymentMethod
         })).unwrap();
         dispatch(resetCart());
-        dispatch(loadProducts());
+        dispatch(loadProducts({ force: true }));
         return { success: true, orderId: newOrder.id };
       } catch (message) {
         return { success: false, message };
@@ -172,7 +172,7 @@ export function useShopActions() {
     updateOrderStatus: async (orderId, newStatus) => {
       try {
         const updatedOrder = await dispatch(updateOrderStatusThunk({ orderId, newStatus })).unwrap();
-        if (updatedOrder.status === 'Cancelado') dispatch(loadProducts());
+        if (updatedOrder.status === 'Cancelado') dispatch(loadProducts({ force: true }));
         return { success: true };
       } catch (message) {
         return { success: false, message };

@@ -48,14 +48,20 @@ También es posible registrar un usuario comprador desde la aplicación.
 - Checkout con validación y descuento de stock.
 - Historial de pedidos para compradores.
 - Panel administrativo de productos, usuarios, inventario y pedidos.
+- Alta de camiseta y todas sus variantes en una única petición transaccional.
 - Bloqueo de cambios de estado para pedidos cancelados.
 - Indicadores visuales durante operaciones asíncronas.
 
 ## Persistencia
 
 Los productos, usuarios, favoritos, carritos, pedidos y stocks se guardan en el
-backend. El navegador conserva únicamente el token JWT necesario para restaurar
-la sesión.
+backend. El navegador conserva el token JWT y una caché temporal del catálogo
+para no descargar todas las camisetas y variantes en cada recarga.
+
+La caché del catálogo dura 30 minutos y se actualiza de forma forzada cuando la
+aplicación crea, edita o elimina productos, confirma una compra o cancela un
+pedido. Los filtros y el ordenamiento se aplican sobre los productos ya
+guardados en Redux, sin volver a consultar el catálogo completo.
 
 ## Arquitectura Redux
 
