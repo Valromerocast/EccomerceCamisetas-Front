@@ -1,14 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
   createProduct,
-  createProductVariant,
   deleteProduct as deleteProductRequest,
-  deleteProductVariant,
   fetchProducts,
+  mapProductResponse,
   updateProduct as updateProductRequest,
-  updateProductVariant
 } from '../../services/api';
-import { cacheProducts, getCachedProducts } from '../catalogCache';
+import { getCachedProducts } from '../catalogCache';
+import { placeOrder, updateOrderStatus } from './ordersSlice';
 
 const cachedProducts = getCachedProducts();
 
@@ -16,9 +15,7 @@ export const loadProducts = createAsyncThunk(
   'products/load',
   async (_, { rejectWithValue }) => {
     try {
-      const products = await fetchProducts();
-      cacheProducts(products);
-      return products;
+      return await fetchProducts();
     } catch (error) {
       return rejectWithValue(error?.message || 'No se pudo cargar el catálogo desde el backend.');
     }
@@ -32,9 +29,10 @@ export const loadProducts = createAsyncThunk(
 
 export const addProduct = createAsyncThunk('products/add', async (
   { product, variants },
-  { dispatch, rejectWithValue }
+  { getState, rejectWithValue }
 ) => {
   try {
+    const productIndex = getState().products.items.length;
     const created = await createProduct({
       ...product,
       variantes: variants.map((variant) => ({
@@ -44,8 +42,7 @@ export const addProduct = createAsyncThunk('products/add', async (
         color: variant.color
       }))
     });
-    await dispatch(loadProducts({ force: true })).unwrap();
-    return created.id;
+    return mapProductResponse(created, productIndex);
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo crear el producto.');
   }
@@ -53,32 +50,24 @@ export const addProduct = createAsyncThunk('products/add', async (
 
 export const updateProduct = createAsyncThunk('products/update', async (
   { productId, data },
-  { dispatch, getState, rejectWithValue }
+  { getState, rejectWithValue }
 ) => {
   try {
-    await updateProductRequest(productId, data.product);
     const currentProduct = getState().products.items.find((item) => item.id === productId);
-    const existingBySize = new Map((currentProduct?.variants || []).map((variant) => [variant.talle, variant]));
-    const requestedSizes = new Set(data.variants.map((variant) => variant.sizeName));
-
-    for (const variant of data.variants) {
-      const existing = existingBySize.get(variant.sizeName);
-      const payload = {
+    const productIndex = getState().products.items.findIndex((item) => item.id === productId);
+    const updated = await updateProductRequest(productId, {
+      ...data.product,
+      variantes: data.variants.map((variant) => ({
         talleId: variant.talleId,
         stock: variant.stock,
         sku: variant.sku,
         color: variant.color
-      };
-      if (existing) await updateProductVariant(existing.id, payload);
-      else await createProductVariant(productId, payload);
-    }
-
-    for (const existing of currentProduct?.variants || []) {
-      if (!requestedSizes.has(existing.talle)) await deleteProductVariant(existing.id);
-    }
-
-    await dispatch(loadProducts({ force: true })).unwrap();
-    return productId;
+      }))
+    });
+    return {
+      ...mapProductResponse(updated, productIndex),
+      featured: currentProduct?.featured ?? productIndex < 4
+    };
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo actualizar el producto.');
   }
@@ -86,11 +75,10 @@ export const updateProduct = createAsyncThunk('products/update', async (
 
 export const deleteProduct = createAsyncThunk('products/delete', async (
   productId,
-  { getState, rejectWithValue }
+  { rejectWithValue }
 ) => {
   try {
     await deleteProductRequest(productId);
-    cacheProducts(getState().products.items.filter((product) => product.id !== productId));
     return productId;
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo eliminar el producto.');
@@ -121,10 +109,57 @@ const productsSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(addProduct.pending, (state) => {
+        state.loading = true;
+        state.error = '';
+      })
+      .addCase(addProduct.fulfilled, (state, action) => {
+        state.items.push(action.payload);
+        state.cacheReady = true;
+        state.loading = false;
+      })
+      .addCase(addProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(updateProduct.pending, (state) => {
+        state.loading = true;
+        state.error = '';
+      })
+      .addCase(updateProduct.fulfilled, (state, action) => {
+        const index = state.items.findIndex((product) => product.id === action.payload.id);
+        if (index !== -1) state.items[index] = action.payload;
+        state.cacheReady = true;
+        state.loading = false;
+      })
+      .addCase(updateProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.items = state.items.filter((product) => product.id !== action.payload);
+        state.cacheReady = true;
+      })
+      .addCase(placeOrder.fulfilled, (state, action) => {
+        updateStockFromOrder(state.items, action.payload, -1);
+      })
+      .addCase(updateOrderStatus.fulfilled, (state, action) => {
+        if (action.payload.status === 'Cancelado') {
+          updateStockFromOrder(state.items, action.payload, 1);
+        }
       });
   }
 });
+
+function updateStockFromOrder(products, order, direction) {
+  for (const item of order.items) {
+    const product = products.find((candidate) => candidate.id === item.productId);
+    const variant = product?.variants.find((candidate) => candidate.id === item.variantId);
+    if (!product || !variant) continue;
+
+    variant.stock = Math.max(0, variant.stock + direction * item.quantity);
+    product.stock[variant.talle] = variant.stock;
+  }
+}
 
 export default productsSlice.reducer;

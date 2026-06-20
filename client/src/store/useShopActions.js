@@ -10,7 +10,6 @@ import {
 import {
   addProduct as addProductThunk,
   deleteProduct as deleteProductThunk,
-  loadProducts,
   updateProduct as updateProductThunk
 } from './slices/productsSlice';
 import {
@@ -140,8 +139,6 @@ export function useShopActions() {
           shippingInfo,
           paymentMethod
         })).unwrap();
-        dispatch(resetCart());
-        dispatch(loadProducts({ force: true }));
         return { success: true, orderId: newOrder.id };
       } catch (message) {
         return { success: false, message };
@@ -149,8 +146,8 @@ export function useShopActions() {
     },
     addProduct: async (data) => {
       try {
-        const productId = await dispatch(addProductThunk(data)).unwrap();
-        return { success: true, productId };
+        const product = await dispatch(addProductThunk(data)).unwrap();
+        return { success: true, productId: product.id };
       } catch (message) {
         return { success: false, message };
       }
@@ -173,8 +170,7 @@ export function useShopActions() {
     },
     updateOrderStatus: async (orderId, newStatus) => {
       try {
-        const updatedOrder = await dispatch(updateOrderStatusThunk({ orderId, newStatus })).unwrap();
-        if (updatedOrder.status === 'Cancelado') dispatch(loadProducts({ force: true }));
+        await dispatch(updateOrderStatusThunk({ orderId, newStatus })).unwrap();
         return { success: true };
       } catch (message) {
         return { success: false, message };

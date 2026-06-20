@@ -1,4 +1,4 @@
-const PRODUCTS_CACHE_KEY = 'mundialista_catalog_products_v1';
+const PRODUCTS_CACHE_KEY = 'mundialista_catalog_products_v2';
 const OPTIONS_CACHE_KEY = 'mundialista_catalog_options_v1';
 const PRODUCTS_MAX_AGE_MS = 30 * 60 * 1000;
 const OPTIONS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -42,7 +42,17 @@ function writeCache(key, value) {
 }
 
 export function getCachedProducts() {
-  return readCache(PRODUCTS_CACHE_KEY, PRODUCTS_MAX_AGE_MS, Array.isArray);
+  return readCache(
+    PRODUCTS_CACHE_KEY,
+    PRODUCTS_MAX_AGE_MS,
+    (products) => Array.isArray(products)
+      && products.every((product) => (
+        product
+        && Array.isArray(product.variants)
+        && product.stock
+        && typeof product.stock === 'object'
+      ))
+  );
 }
 
 export function cacheProducts(products) {

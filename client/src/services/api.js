@@ -349,7 +349,8 @@ function mapStockBySize(variantes = []) {
   }, {});
 }
 
-function mapProduct(camiseta, variantes, index) {
+export function mapProductResponse(camiseta, index = 0) {
+  const variantes = camiseta?.variantes || [];
   const mappedVariants = mapVariants(variantes);
   const sizes = [...new Set(mappedVariants.map((variante) => variante.talle))];
   const image = getImage(camiseta);
@@ -451,33 +452,20 @@ export async function fetchProducts(filters = {}, options = {}) {
   appendQueryParam(params, 'sort', filters.sortBy);
 
   const query = params.toString();
-  const [camisetas, variantes] = await Promise.all([
-    request(`/api/camisetas${query ? `?${query}` : ''}`, options),
-    request('/api/camisetas/variantes', options)
-  ]);
-  const variantsByProduct = variantes.reduce((groupedVariants, variante) => {
-    const productId = Number(variante.camisetaId);
-    const currentVariants = groupedVariants.get(productId) || [];
-    currentVariants.push(variante);
-    groupedVariants.set(productId, currentVariants);
-    return groupedVariants;
-  }, new Map());
-
-  const products = camisetas.map((camiseta, index) => (
-    mapProduct(camiseta, variantsByProduct.get(Number(camiseta.id)) || [], index)
-  ));
+  const camisetas = await request(`/api/camisetas${query ? `?${query}` : ''}`, options);
+  const products = camisetas.map((camiseta, index) => mapProductResponse(camiseta, index));
 
   return products.filter((product) => product.active);
 }
 
-export function createProduct(payload) {
+export async function createProduct(payload) {
   return request('/api/camisetas', {
     method: 'POST',
     body: JSON.stringify(payload)
   });
 }
 
-export function updateProduct(productId, payload) {
+export async function updateProduct(productId, payload) {
   return request(`/api/camisetas/${productId}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
@@ -486,26 +474,6 @@ export function updateProduct(productId, payload) {
 
 export function deleteProduct(productId) {
   return request(`/api/camisetas/${productId}`, {
-    method: 'DELETE'
-  });
-}
-
-export function createProductVariant(productId, payload) {
-  return request(`/api/camisetas/${productId}/variantes`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
-}
-
-export function updateProductVariant(variantId, payload) {
-  return request(`/api/camisetas/variantes/${variantId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload)
-  });
-}
-
-export function deleteProductVariant(variantId) {
-  return request(`/api/camisetas/variantes/${variantId}`, {
     method: 'DELETE'
   });
 }

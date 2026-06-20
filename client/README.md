@@ -50,6 +50,8 @@ También es posible registrar un usuario comprador desde la aplicación.
 - Historial de pedidos para compradores.
 - Panel administrativo de productos, usuarios, inventario y pedidos.
 - Alta de camiseta y todas sus variantes en una única petición transaccional.
+- Altas y ediciones actualizan Redux directamente con la respuesta de la API,
+  sin volver a descargar el catálogo completo.
 - Bloqueo de cambios de estado para pedidos cancelados.
 - Indicadores visuales durante operaciones asíncronas.
 
@@ -59,10 +61,12 @@ Los productos, usuarios, favoritos, carritos, pedidos y stocks se guardan en el
 backend. El navegador conserva el token JWT y una caché temporal del catálogo
 para no descargar todas las camisetas y variantes en cada recarga.
 
-La caché del catálogo dura 30 minutos y se actualiza de forma forzada cuando la
-aplicación crea, edita o elimina productos, confirma una compra o cancela un
-pedido. Los filtros y el ordenamiento se aplican sobre los productos ya
-guardados en Redux, sin volver a consultar el catálogo completo.
+La caché del catálogo dura 30 minutos y se sincroniza automáticamente después
+de cada cambio del estado de productos en Redux. Crear, editar o eliminar una
+camiseta, confirmar una compra o cancelar un pedido modifica el store mediante
+los reducers correspondientes, sin volver a descargar el catálogo completo.
+Los filtros y el ordenamiento se aplican sobre los productos ya guardados en
+Redux.
 
 ## Arquitectura Redux
 
@@ -84,6 +88,8 @@ store/
 - `store.js` configura el store con Redux Toolkit.
 - Los slices separan autenticación, catálogo, carrito, favoritos y pedidos.
 - Las operaciones contra la API utilizan `createAsyncThunk`.
+- Los `fulfilled` agregan, reemplazan o eliminan directamente en los reducers;
+  los componentes suscritos renderizan el nuevo estado mediante `useSelector`.
 - Los selectores calculan el carrito y los pedidos enriquecidos con los datos
   actuales del catálogo.
 - Las vistas leen el estado mediante `useSelector`.
