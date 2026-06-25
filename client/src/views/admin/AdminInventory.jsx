@@ -3,49 +3,44 @@
 // Desde acá el admin puede editar o eliminar cualquier producto, y agregar uno nuevo.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useNotification } from '../../components/ui/useNotification';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectProducts } from '../../store/selectors';
-import { useShopActions } from '../../store/useShopActions';
+import { deleteProduct } from '../../store/slices/productsSlice';
+import { showNotification } from '../../store/slices/notificationsSlice';
 
 function AdminInventory() {
+  const dispatch = useDispatch();
   const products = useSelector(selectProducts);
-  const { deleteProduct } = useShopActions();
-  const { showConfirm, showNotification } = useNotification();
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   useScrollOnMessage(deleteError);
 
   // Pide confirmación antes de eliminar un producto (por seguridad)
-  const handleDelete = async (id, name) => {
-    const confirmed = await showConfirm({
-      title: 'Eliminar producto',
-      message: `¿Estás seguro de que deseas eliminar la camiseta "${name}" del catálogo?`,
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar'
-    });
+  const handleDelete = (id, name) => {
+    setPendingDelete({ id, name });
+  };
 
-    if (!confirmed) {
-      return;
-    }
-
+  const confirmDelete = async () => {
+    const { id, name } = pendingDelete;
+    setPendingDelete(null);
     setDeletingId(id);
     setDeleteError('');
-    const result = await deleteProduct(id);
-    setDeletingId(null);
-
-    if (!result.success) {
-      const message = result.message || 'No se pudo eliminar el producto.';
+    try {
+      await dispatch(deleteProduct(id)).unwrap();
+      dispatch(showNotification({
+        type: 'success',
+        message: `"${name}" se eliminó correctamente del catálogo.`
+      }));
+    } catch (error) {
+      const message = error || 'No se pudo eliminar el producto.';
       setDeleteError(message);
-      showNotification({ type: 'error', message });
-      return;
+      dispatch(showNotification({ type: 'error', message }));
+    } finally {
+      setDeletingId(null);
     }
-
-    showNotification({
-      type: 'success',
-      message: `"${name}" se eliminó correctamente del catálogo.`
-    });
   };
 
   // Calcula una distribución aproximada del stock por talle a partir del stock total
@@ -190,6 +185,18 @@ function AdminInventory() {
           </div>
         </section>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Eliminar producto"
+        message={pendingDelete
+          ? `¿Estás seguro de que deseas eliminar la camiseta "${pendingDelete.name}" del catálogo?`
+          : ''}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

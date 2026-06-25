@@ -6,10 +6,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
-import { useShopActions } from '../store/useShopActions';
+import { useDispatch } from 'react-redux';
+import { register } from '../store/slices/authSlice';
+import { loadCart } from '../store/slices/cartSlice';
+import { loadFavorites } from '../store/slices/favoritesSlice';
+import { loadOrders } from '../store/slices/ordersSlice';
 
 function Register() {
-  const { registerUser } = useShopActions();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -85,20 +89,20 @@ function Register() {
 
     setLoading(true);
     try {
-      const registerResult = await registerUser({
+      const registerResult = await dispatch(register({
         nombre: trimmedName,
         apellido: trimmedApellido,
         email: trimmedEmail,
         password: formData.password
-      });
-
-      if (registerResult.success) {
-        navigate('/register-success');
-      } else {
-        setError(registerResult.message || 'Error al registrar. Intentá de nuevo.');
-      }
-    } catch {
-      setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
+      })).unwrap();
+      await Promise.all([
+        dispatch(loadCart(registerResult.user)),
+        dispatch(loadFavorites(registerResult.user)),
+        dispatch(loadOrders())
+      ]);
+      navigate('/register-success');
+    } catch (message) {
+      setError(message || 'No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
     } finally {
       setLoading(false);
     }

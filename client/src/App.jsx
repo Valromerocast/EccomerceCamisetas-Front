@@ -25,9 +25,9 @@ import AdminUserAdd from './views/admin/AdminUserAdd';
 import AdminOrderDetail from './views/admin/AdminOrderDetail';
 import { logout, restoreSession } from './store/slices/authSlice';
 import { loadProducts } from './store/slices/productsSlice';
-import { loadCart, resetCart } from './store/slices/cartSlice';
-import { loadFavorites, resetFavorites } from './store/slices/favoritesSlice';
-import { loadOrders, resetOrders } from './store/slices/ordersSlice';
+import { loadCart } from './store/slices/cartSlice';
+import { loadFavorites } from './store/slices/favoritesSlice';
+import { loadOrders } from './store/slices/ordersSlice';
 import { selectAuthReady, selectUser } from './store/selectors';
 import { AUTH_EXPIRED_EVENT } from './services/api';
 
@@ -39,9 +39,6 @@ function App() {
   useEffect(() => {
     const handleExpiredSession = () => {
       dispatch(logout());
-      dispatch(resetCart());
-      dispatch(resetFavorites());
-      dispatch(resetOrders());
     };
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession);

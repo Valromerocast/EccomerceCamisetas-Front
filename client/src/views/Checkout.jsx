@@ -7,9 +7,9 @@ import { Input } from '../components/ui/Form';
 import PaymentMethods from '../components/checkout/PaymentMethods';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectEnrichedCart, selectUser } from '../store/selectors';
-import { useShopActions } from '../store/useShopActions';
+import { placeOrder } from '../store/slices/ordersSlice';
 
 // Helper functions for card validation
 const validateLuhn = (cardNumber) => {
@@ -86,9 +86,9 @@ const validateCvv = (cvv) => {
 };
 
 function Checkout() {
+  const dispatch = useDispatch();
   const cart = useSelector(selectEnrichedCart);
   const user = useSelector(selectUser);
-  const { placeOrder } = useShopActions();
   const navigate = useNavigate();
 
   // Estado del formulario de envío
@@ -235,12 +235,14 @@ function Checkout() {
     setSubmitting(true);
 
     try {
-      const result = await placeOrder(trimmedData, paymentMethod);
-      if (result.success) {
-        navigate('/order-success');
-      } else {
-        setError(result.message || 'Ocurrió un error al procesar tu orden.');
-      }
+      await dispatch(placeOrder({
+        userName: user?.name || trimmedData.fullName,
+        shippingInfo: trimmedData,
+        paymentMethod
+      })).unwrap();
+      navigate('/order-success');
+    } catch (message) {
+      setError(message || 'Ocurrió un error al procesar tu orden.');
     } finally {
       submittingRef.current = false;
       setSubmitting(false);

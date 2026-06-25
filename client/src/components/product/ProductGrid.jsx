@@ -3,7 +3,7 @@
 // Si no hay productos que mostrar, muestra un estado vacío en lugar de dejar la página en blanco.
 import ProductCard from './ProductCard';
 
-function ProductGrid({ user, products = [], addToCart, favorites = [], toggleFavorite, onClearFilters }) {
+function ProductGrid({ user, products = [], favorites = [], onClearFilters }) {
 
   // Estado vacío: cuando no hay resultados que mostrar
   if (products.length === 0) {
@@ -39,9 +39,7 @@ function ProductGrid({ user, products = [], addToCart, favorites = [], toggleFav
             key={product.id}
             user={user}
             product={product}
-            addToCart={addToCart}
             isFavorite={favorites.includes(product.id)}
-            toggleFavorite={toggleFavorite}
           />
         ))}
       </div>

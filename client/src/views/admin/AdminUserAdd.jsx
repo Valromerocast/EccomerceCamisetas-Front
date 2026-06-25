@@ -5,10 +5,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Input, Button } from '../../components/ui/Form';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
-import { useShopActions } from '../../store/useShopActions';
+import { useDispatch } from 'react-redux';
+import { createAdminUser } from '../../store/slices/authSlice';
 
 function AdminUserAdd() {
-  const { createUserAsAdmin: createUser } = useShopActions();
+  const dispatch = useDispatch();
   // Estado del formulario con los datos del nuevo usuario
   const [formData, setFormData] = useState({
     name: '',
@@ -65,21 +66,20 @@ function AdminUserAdd() {
       return;
     }
 
-    const res = await createUser({
-      nombre: trimmedName,
-      apellido: trimmedApellido,
-      email: trimmedEmail,
-      password: formData.password
-    });
-
-    if (res.success) {
+    try {
+      await dispatch(createAdminUser({
+        nombre: trimmedName,
+        apellido: trimmedApellido,
+        email: trimmedEmail,
+        password: formData.password
+      })).unwrap();
       setMessage({
         type: 'success',
         text: '¡Cuenta de tipo cliente registrada con éxito! El usuario ya puede iniciar sesión.'
       });
       setFormData({ name: '', apellido: '', email: '', password: '' });
-    } else {
-      setMessage({ type: 'error', text: res.message });
+    } catch (message) {
+      setMessage({ type: 'error', text: message });
     }
   };
 

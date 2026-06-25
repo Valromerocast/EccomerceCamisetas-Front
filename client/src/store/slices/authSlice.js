@@ -1,31 +1,29 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
-  clearAuthToken,
   createUserAsAdmin,
   fetchCurrentUser,
-  getAuthToken,
   loginUser,
   registerUser
 } from '../../services/api';
 
 const errorMessage = (error, fallback) => error?.message || fallback;
 
-export const restoreSession = createAsyncThunk('auth/restoreSession', async (_, { rejectWithValue }) => {
-  if (!getAuthToken()) return null;
+export const restoreSession = createAsyncThunk('auth/restoreSession', async (_, { getState, rejectWithValue }) => {
+  const token = getState().auth.token;
+  if (!token) return null;
   try {
-    return await fetchCurrentUser();
+    return await fetchCurrentUser(token);
   } catch (error) {
-    clearAuthToken();
     return rejectWithValue(errorMessage(error, 'No se pudo restaurar la sesión.'));
   }
 });
 
 export const login = createAsyncThunk('auth/login', async (
-  { email, password, rememberMe },
+  { email, password },
   { rejectWithValue }
 ) => {
   try {
-    return await loginUser(email, password, rememberMe);
+    return await loginUser(email, password);
   } catch (error) {
     return rejectWithValue(error?.status === 401 ? 'Credenciales incorrectas.' : errorMessage(error, 'No se pudo iniciar sesión.'));
   }
@@ -62,14 +60,16 @@ const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
+    token: null,
     ready: false,
     loading: false,
-    error: ''
+    error: '',
+    lastCreatedUser: null
   },
   reducers: {
     logout(state) {
-      clearAuthToken();
       state.user = null;
+      state.token = null;
       state.error = '';
       state.ready = true;
     }
@@ -85,6 +85,7 @@ const authSlice = createSlice({
       })
       .addCase(restoreSession.rejected, (state, action) => {
         state.user = null;
+        state.token = null;
         state.error = action.payload;
         state.ready = true;
       })
@@ -93,7 +94,9 @@ const authSlice = createSlice({
         state.error = '';
       })
       .addCase(login.fulfilled, (state, action) => {
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.ready = true;
         state.loading = false;
       })
       .addCase(login.rejected, (state, action) => {
@@ -105,10 +108,25 @@ const authSlice = createSlice({
         state.error = '';
       })
       .addCase(register.fulfilled, (state, action) => {
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.ready = true;
         state.loading = false;
       })
       .addCase(register.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(createAdminUser.pending, (state) => {
+        state.loading = true;
+        state.error = '';
+        state.lastCreatedUser = null;
+      })
+      .addCase(createAdminUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.lastCreatedUser = action.payload;
+      })
+      .addCase(createAdminUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

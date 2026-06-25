@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Input, Select, Button } from '../../components/ui/Form';
-import { fetchCatalogOptions } from '../../services/api';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
-import { useSelector } from 'react-redux';
-import { selectProducts } from '../../store/selectors';
-import { useShopActions } from '../../store/useShopActions';
-import {
-  cacheCatalogOptions,
-  getCachedCatalogOptions
-} from '../../store/catalogCache';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectCatalogOptions, selectProducts } from '../../store/selectors';
+import { loadCatalogOptions } from '../../store/slices/catalogSlice';
+import { addProduct, updateProduct } from '../../store/slices/productsSlice';
 
 function findOptionId(options, name) {
   return String(options.find((option) => option.nombre === name)?.id || '');
@@ -36,7 +32,8 @@ function buildInitialForm(product, options) {
   };
 }
 
-function ProductForm({ product, options, addProduct, updateProduct }) {
+function ProductForm({ product, options }) {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const isEditMode = Boolean(product);
   const [formData, setFormData] = useState(() => buildInitialForm(product, options));
@@ -121,17 +118,21 @@ function ProductForm({ product, options, addProduct, updateProduct }) {
     });
 
     setSaving(true);
-    const result = isEditMode
-      ? await updateProduct(product.id, { product: productPayload, variants })
-      : await addProduct({ product: productPayload, variants });
-    setSaving(false);
-
-    if (!result.success) {
-      setError(result.message || 'No se pudo guardar el producto.');
-      return;
+    try {
+      if (isEditMode) {
+        await dispatch(updateProduct({
+          productId: product.id,
+          data: { product: productPayload, variants }
+        })).unwrap();
+      } else {
+        await dispatch(addProduct({ product: productPayload, variants })).unwrap();
+      }
+      navigate('/admin/inventory');
+    } catch (message) {
+      setError(message || 'No se pudo guardar el producto.');
+    } finally {
+      setSaving(false);
     }
-
-    navigate('/admin/inventory');
   };
 
   const selectOptions = (items) => items.map((item) => ({
@@ -234,42 +235,23 @@ function ProductForm({ product, options, addProduct, updateProduct }) {
 }
 
 function AdminProductEdit() {
+  const dispatch = useDispatch();
   const products = useSelector(selectProducts);
-  const { addProduct, updateProduct } = useShopActions();
+  const options = useSelector(selectCatalogOptions);
+  const optionsLoading = useSelector((state) => state.catalog.loading);
+  const loadError = useSelector((state) => state.catalog.error);
   const { id } = useParams();
   const isEditMode = Boolean(id);
   const product = isEditMode ? products.find((item) => item.id === Number(id)) : null;
-  const [options, setOptions] = useState(() => getCachedCatalogOptions());
-  const [loadError, setLoadError] = useState('');
-
   useEffect(() => {
-    if (options) {
-      return undefined;
-    }
-
-    let active = true;
-
-    fetchCatalogOptions()
-      .then((catalogOptions) => {
-        if (active) {
-          cacheCatalogOptions(catalogOptions);
-          setOptions(catalogOptions);
-        }
-      })
-      .catch((error) => {
-        if (active) setLoadError(error.message || 'No se pudieron cargar los catálogos.');
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [options]);
+    dispatch(loadCatalogOptions());
+  }, [dispatch]);
 
   if (loadError) {
     return <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg text-sm">{loadError}</div>;
   }
 
-  if (!options || (isEditMode && !product)) {
+  if (optionsLoading || options.countries.length === 0 || (isEditMode && !product)) {
     return <p className="text-sm text-neutral-500">Cargando producto y catálogos...</p>;
   }
 
@@ -278,8 +260,6 @@ function AdminProductEdit() {
       key={product?.id || 'new'}
       product={product}
       options={options}
-      addProduct={addProduct}
-      updateProduct={updateProduct}
     />
   );
 }

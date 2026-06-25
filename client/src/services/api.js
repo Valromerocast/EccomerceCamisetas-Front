@@ -1,13 +1,18 @@
 import { getTeamCrest } from '../utils/teamCrest';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-const TOKEN_STORAGE_KEY = 'camisetas_jwt';
 const AUTH_EXPIRED_EVENT = 'mundialista:auth-expired';
 const SIZE_ORDER = ['S', 'M', 'L', 'XL'];
+let authTokenProvider = () => null;
+
+export function setAuthTokenProvider(provider) {
+  authTokenProvider = typeof provider === 'function' ? provider : () => null;
+}
 
 async function request(path, options = {}) {
   const {
     auth = true,
+    token: explicitToken,
     headers: optionHeaders = {},
     ...fetchOptions
   } = options;
@@ -20,7 +25,7 @@ async function request(path, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const token = getAuthToken();
+  const token = explicitToken || authTokenProvider();
   if (auth && token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -32,7 +37,6 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     if (auth && response.status === 401) {
-      clearAuthToken();
       window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
     }
 
@@ -63,26 +67,6 @@ async function request(path, options = {}) {
   return response.json();
 }
 
-export function getAuthToken() {
-  return localStorage.getItem(TOKEN_STORAGE_KEY)
-    || sessionStorage.getItem(TOKEN_STORAGE_KEY);
-}
-
-export function clearAuthToken() {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-}
-
-function saveAuthToken(token, persistent = true) {
-  if (!token) {
-    throw new Error('El backend no devolvió un token de autenticación.');
-  }
-
-  clearAuthToken();
-  const storage = persistent ? localStorage : sessionStorage;
-  storage.setItem(TOKEN_STORAGE_KEY, token);
-}
-
 function mapAuthenticatedUser(usuario) {
   const normalizedRole = String(usuario?.rol || usuario?.role || '').toLowerCase();
   const role = normalizedRole.includes('admin')
@@ -103,30 +87,29 @@ function mapAuthenticatedUser(usuario) {
   };
 }
 
-export async function fetchCurrentUser() {
-  const usuario = await request('/api/usuarios/me');
+export async function fetchCurrentUser(token) {
+  const usuario = await request('/api/usuarios/me', { token });
   return mapAuthenticatedUser(usuario);
 }
 
-async function authenticate(path, payload, persistent = true) {
+async function authenticate(path, payload) {
   const authResponse = await request(path, {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload)
   });
+  const token = authResponse?.token;
 
-  saveAuthToken(authResponse?.token, persistent);
-
-  try {
-    return await fetchCurrentUser();
-  } catch (error) {
-    clearAuthToken();
-    throw error;
+  if (!token) {
+    throw new Error('El backend no devolvió un token de autenticación.');
   }
+
+  const user = await fetchCurrentUser(token);
+  return { user, token };
 }
 
-export function loginUser(email, password, rememberMe = false) {
-  return authenticate('/api/auth/login', { email, password }, rememberMe);
+export function loginUser(email, password) {
+  return authenticate('/api/auth/login', { email, password });
 }
 
 export function registerUser(payload) {

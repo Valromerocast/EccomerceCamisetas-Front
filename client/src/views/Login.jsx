@@ -5,20 +5,22 @@ import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectUser } from '../store/selectors';
-import { useShopActions } from '../store/useShopActions';
+import { login } from '../store/slices/authSlice';
+import { loadCart } from '../store/slices/cartSlice';
+import { loadFavorites } from '../store/slices/favoritesSlice';
+import { loadOrders } from '../store/slices/ordersSlice';
 
 function Login() {
+  const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const { login } = useShopActions();
   const navigate = useNavigate();
 
   // Estado del formulario: email, contraseña y checkbox de "recordarme"
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    rememberMe: false
+    password: ''
   });
 
   // Mensaje de error que se muestra si las credenciales son incorrectas
@@ -66,15 +68,18 @@ function Login() {
 
     setLoading(true);
     try {
-      const result = await login(emailTrimmed, formData.password, formData.rememberMe);
-
-      if (result.success) {
-        navigate(result.user.role === 'admin' ? '/admin/sales' : '/profile');
-      } else {
-        setError(result.message || 'No se pudo iniciar sesión.');
-      }
-    } catch {
-      setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
+      const result = await dispatch(login({
+        email: emailTrimmed,
+        password: formData.password
+      })).unwrap();
+      await Promise.all([
+        dispatch(loadCart(result.user)),
+        dispatch(loadFavorites(result.user)),
+        dispatch(loadOrders())
+      ]);
+      navigate(result.user.role === 'admin' ? '/admin/sales' : '/profile');
+    } catch (message) {
+      setError(message || 'No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
     } finally {
       setLoading(false);
     }
@@ -150,21 +155,6 @@ function Login() {
                 required
                 className="w-full bg-white border border-neutral-300 text-antracita text-xs rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-all duration-200 shadow-sm"
               />
-            </div>
-
-            {/* Sin marcar, la sesión dura solamente hasta cerrar la pestaña. */}
-            <div className="flex items-center space-x-2.5 py-1">
-              <input
-                type="checkbox"
-                id="rememberMe"
-                name="rememberMe"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-                className="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4"
-              />
-              <label htmlFor="rememberMe" className="text-xs text-neutral-500 select-none cursor-pointer">
-                Recordarme en este dispositivo
-              </label>
             </div>
 
             <div className="pt-2">

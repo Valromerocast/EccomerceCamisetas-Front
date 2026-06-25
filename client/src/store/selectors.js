@@ -1,11 +1,13 @@
 import { createSelector } from '@reduxjs/toolkit';
 
 export const selectUser = (state) => state.auth.user;
+export const selectAuthToken = (state) => state.auth.token;
 export const selectAuthReady = (state) => state.auth.ready;
 export const selectProducts = (state) => state.products.items;
 export const selectCart = (state) => state.cart.items;
 export const selectFavorites = (state) => state.favorites.items;
 export const selectOrders = (state) => state.orders.items;
+export const selectCatalogOptions = (state) => state.catalog.options;
 
 export const selectEnrichedCart = createSelector(
   [selectCart, selectProducts],

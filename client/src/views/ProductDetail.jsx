@@ -2,12 +2,12 @@
 // Muestra la imagen ampliada, descripción completa, selector de talle y color, y el botón de compra.
 // Si el usuario es admin, solo muestra la info sin los controles de compra.
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useNotification } from '../components/ui/useNotification';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectProducts, selectUser } from '../store/selectors';
-import { useShopActions } from '../store/useShopActions';
+import { addToCart } from '../store/slices/cartSlice';
+import { showNotification } from '../store/slices/notificationsSlice';
 import { applyTeamCrestFallback } from '../utils/teamCrest';
 
 function getStockForSize(product, size) {
@@ -21,12 +21,12 @@ function getStockForSize(product, size) {
 }
 
 function ProductDetail() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector(selectUser);
   const products = useSelector(selectProducts);
   const productsLoading = useSelector((state) => state.products.loading);
   const productsError = useSelector((state) => state.products.error);
-  const { addToCart } = useShopActions();
-  const { showNotification } = useNotification();
   const [addingToCart, setAddingToCart] = useState(false);
   const canUseShoppingFeatures = !user || user.role === 'user';
 
@@ -105,15 +105,22 @@ function ProductDetail() {
   // Agrego el producto al carrito con la talla y cantidad seleccionados
   const handleAddToCart = async () => {
     if (currentSizeStock === 0) return;  // no hago nada si está agotado
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     setAddingToCart(true);
     try {
-      const success = await addToCart(product, quantity, selectedSize);
-      if (success) {
-        showNotification({
-          type: 'success',
-          message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
-        });
-      }
+      await dispatch(addToCart({ product, quantity, size: selectedSize })).unwrap();
+      dispatch(showNotification({
+        type: 'success',
+        message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
+      }));
+    } catch (message) {
+      dispatch(showNotification({
+        type: user.role === 'user' ? 'error' : 'warning',
+        message
+      }));
     } finally {
       setAddingToCart(false);
     }

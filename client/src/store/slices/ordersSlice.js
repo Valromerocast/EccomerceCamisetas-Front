@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { changeOrderStatus, createOrder, fetchOrders } from '../../services/api';
+import { logout } from './authSlice';
 
 export const loadOrders = createAsyncThunk('orders/load', async (_, { rejectWithValue }) => {
   try {
@@ -74,6 +75,12 @@ const ordersSlice = createSlice({
       })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
         state.items = state.items.map((item) => item.id === action.payload.id ? action.payload : item);
+      })
+      .addCase(logout, (state) => {
+        state.items = [];
+        state.loading = false;
+        state.creating = false;
+        state.error = '';
       });
   }
 });

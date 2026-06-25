@@ -7,6 +7,7 @@ import {
   mapCartResponse,
   updateCartItem
 } from '../../services/api';
+import { logout } from './authSlice';
 import { placeOrder } from './ordersSlice';
 
 export const loadCart = createAsyncThunk('cart/load', async (user, { rejectWithValue }) => {
@@ -121,6 +122,11 @@ const cartSlice = createSlice({
       })
       .addCase(clearCart.rejected, rejected);
     builder.addCase(placeOrder.fulfilled, (state) => {
+      state.items = [];
+      state.loading = false;
+      state.error = '';
+    });
+    builder.addCase(logout, (state) => {
       state.items = [];
       state.loading = false;
       state.error = '';

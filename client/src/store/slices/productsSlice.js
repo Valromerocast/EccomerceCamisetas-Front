@@ -6,23 +6,27 @@ import {
   mapProductResponse,
   updateProduct as updateProductRequest,
 } from '../../services/api';
-import { getCachedProducts } from '../catalogCache';
 import { placeOrder, updateOrderStatus } from './ordersSlice';
 
-const cachedProducts = getCachedProducts();
+const PRODUCTS_MAX_AGE_MS = 30 * 60 * 1000;
 
 export const loadProducts = createAsyncThunk(
   'products/load',
   async (_, { rejectWithValue }) => {
     try {
-      return await fetchProducts();
+      return {
+        items: await fetchProducts(),
+        fetchedAt: Date.now()
+      };
     } catch (error) {
       return rejectWithValue(error?.message || 'No se pudo cargar el catálogo desde el backend.');
     }
   },
   {
     condition: (options, { getState }) => (
-      Boolean(options?.force) || !getState().products.cacheReady
+      Boolean(options?.force)
+      || getState().products.items.length === 0
+      || Date.now() - getState().products.lastFetched >= PRODUCTS_MAX_AGE_MS
     )
   }
 );
@@ -88,8 +92,8 @@ export const deleteProduct = createAsyncThunk('products/delete', async (
 const productsSlice = createSlice({
   name: 'products',
   initialState: {
-    items: cachedProducts || [],
-    cacheReady: cachedProducts !== null,
+    items: [],
+    lastFetched: 0,
     loading: false,
     error: ''
   },
@@ -101,8 +105,8 @@ const productsSlice = createSlice({
         state.error = '';
       })
       .addCase(loadProducts.fulfilled, (state, action) => {
-        state.items = action.payload;
-        state.cacheReady = true;
+        state.items = action.payload.items;
+        state.lastFetched = action.payload.fetchedAt;
         state.loading = false;
       })
       .addCase(loadProducts.rejected, (state, action) => {
@@ -115,7 +119,6 @@ const productsSlice = createSlice({
       })
       .addCase(addProduct.fulfilled, (state, action) => {
         state.items.push(action.payload);
-        state.cacheReady = true;
         state.loading = false;
       })
       .addCase(addProduct.rejected, (state, action) => {
@@ -129,16 +132,23 @@ const productsSlice = createSlice({
       .addCase(updateProduct.fulfilled, (state, action) => {
         const index = state.items.findIndex((product) => product.id === action.payload.id);
         if (index !== -1) state.items[index] = action.payload;
-        state.cacheReady = true;
         state.loading = false;
       })
       .addCase(updateProduct.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(deleteProduct.pending, (state) => {
+        state.loading = true;
+        state.error = '';
+      })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.items = state.items.filter((product) => product.id !== action.payload);
-        state.cacheReady = true;
+        state.loading = false;
+      })
+      .addCase(deleteProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       .addCase(placeOrder.fulfilled, (state, action) => {
         updateStockFromOrder(state.items, action.payload, -1);

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { addFavorite, deleteFavorite, fetchFavorites } from '../../services/api';
+import { logout } from './authSlice';
 
 export const loadFavorites = createAsyncThunk('favorites/load', async (user, { rejectWithValue }) => {
   if (!user || user.role !== 'user') return [];
@@ -61,6 +62,11 @@ const favoritesSlice = createSlice({
           ? state.items.filter((item) => item !== id)
           : [...state.items, id];
         state.error = action.payload;
+      })
+      .addCase(logout, (state) => {
+        state.items = [];
+        state.loading = false;
+        state.error = '';
       });
   }
 });

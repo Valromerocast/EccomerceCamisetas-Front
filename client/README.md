@@ -40,7 +40,6 @@ También es posible registrar un usuario comprador desde la aplicación.
 ## Funcionalidades
 
 - Registro, login y restauración de sesión mediante JWT.
-- La opción "Recordarme" elige entre persistencia local o por pestaña.
 - Catálogo conectado al backend con búsqueda, ordenamiento y filtros.
 - Filtros por país, tipo, género, talle con stock y precio.
 - Detalle de producto y selección de talle y cantidad.
@@ -58,15 +57,14 @@ También es posible registrar un usuario comprador desde la aplicación.
 ## Persistencia
 
 Los productos, usuarios, favoritos, carritos, pedidos y stocks se guardan en el
-backend. El navegador conserva el token JWT y una caché temporal del catálogo
-para no descargar todas las camisetas y variantes en cada recarga.
+backend. Redux Persist conserva automáticamente en `localStorage` el estado de
+autenticación, productos y opciones del catálogo. La aplicación no accede
+manualmente al almacenamiento del navegador.
 
-La caché del catálogo dura 30 minutos y se sincroniza automáticamente después
-de cada cambio del estado de productos en Redux. Crear, editar o eliminar una
+El catálogo se vuelve a consultar cuando no existe información persistida o
+cuando pasaron 30 minutos desde la última carga. Crear, editar o eliminar una
 camiseta, confirmar una compra o cancelar un pedido modifica el store mediante
 los reducers correspondientes, sin volver a descargar el catálogo completo.
-Los filtros y el ordenamiento se aplican sobre los productos ya guardados en
-Redux.
 
 ## Arquitectura Redux
 
@@ -76,25 +74,27 @@ El estado global está organizado en `src/store`:
 store/
 ├── store.js
 ├── selectors.js
-├── useShopActions.js
 └── slices/
     ├── authSlice.js
     ├── productsSlice.js
     ├── cartSlice.js
     ├── favoritesSlice.js
-    └── ordersSlice.js
+    ├── ordersSlice.js
+    ├── catalogSlice.js
+    └── notificationsSlice.js
 ```
 
-- `store.js` configura el store con Redux Toolkit.
-- Los slices separan autenticación, catálogo, carrito, favoritos y pedidos.
+- `store.js` configura Redux Toolkit y Redux Persist.
+- Los siete slices separan autenticación, productos, carrito, favoritos,
+  pedidos, catálogos auxiliares y notificaciones.
 - Las operaciones contra la API utilizan `createAsyncThunk`.
 - Los `fulfilled` agregan, reemplazan o eliminan directamente en los reducers;
   los componentes suscritos renderizan el nuevo estado mediante `useSelector`.
 - Los selectores calculan el carrito y los pedidos enriquecidos con los datos
   actuales del catálogo.
-- Las vistas leen el estado mediante `useSelector`.
-- Las acciones se despachan desde `useShopActions`, que adapta los resultados
-  de Redux a los flujos visuales de la aplicación.
+- Las vistas leen el estado con `useSelector` y despachan acciones con
+  `useDispatch`.
+- Las notificaciones se administran con Redux; no se utiliza React Context.
 - Los estados puramente visuales y formularios continúan usando `useState`.
 - Las respuestas `401` eliminan la sesión vencida y limpian los datos privados
   del store.

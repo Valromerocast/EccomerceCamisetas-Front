@@ -2,16 +2,16 @@
 // Muestra los datos de la cuenta y el historial de pedidos del usuario logueado.
 // Si no hay sesión activa, redirige al login.
 import { Navigate, Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectEnrichedOrders, selectUser } from '../store/selectors';
-import { useShopActions } from '../store/useShopActions';
+import { logout } from '../store/slices/authSlice';
 
 function Profile() {
+  const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const orders = useSelector(selectEnrichedOrders);
   const ordersLoading = useSelector((state) => state.orders.loading);
   const ordersError = useSelector((state) => state.orders.error);
-  const { logout } = useShopActions();
   // Si no hay usuario logueado, lo mando al login sin importar qué
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -47,7 +47,7 @@ function Profile() {
         </div>
         {/* Botón de logout: cambia de color al hacer hover para indicar que es una acción destructiva */}
         <button
-          onClick={logout}
+          onClick={() => dispatch(logout())}
           className="bg-white border border-neutral-300 hover:border-red-500 hover:text-red-500 text-xs font-semibold py-2 px-4 rounded-lg transition-colors cursor-pointer shadow-sm"
         >
           Cerrar Sesión

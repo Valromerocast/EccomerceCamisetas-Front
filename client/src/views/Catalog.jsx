@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import ProductFilters from '../components/product/ProductFilters';
 import ProductGrid from '../components/product/ProductGrid';
-import { fetchCatalogOptions } from '../services/api';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
-import { useSelector } from 'react-redux';
-import { selectFavorites, selectProducts, selectUser } from '../store/selectors';
-import { useShopActions } from '../store/useShopActions';
+import { useDispatch, useSelector } from 'react-redux';
 import {
-  cacheCatalogOptions,
-  getCachedCatalogOptions
-} from '../store/catalogCache';
+  selectCatalogOptions,
+  selectFavorites,
+  selectProducts,
+  selectUser
+} from '../store/selectors';
+import { loadCatalogOptions } from '../store/slices/catalogSlice';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -22,19 +22,16 @@ const DEFAULT_FILTERS = {
   maxPrice: '',
   sortBy: 'default'
 };
-const EMPTY_CATALOG_OPTIONS = {
-  countries: [],
-  types: [],
-  genders: [],
-  sizes: []
-};
 function Catalog() {
+  const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const products = useSelector(selectProducts);
   const productsLoading = useSelector((state) => state.products.loading);
   const productsError = useSelector((state) => state.products.error);
   const favorites = useSelector(selectFavorites);
-  const { addToCart, toggleFavorite } = useShopActions();
+  const options = useSelector(selectCatalogOptions);
+  const optionsLoading = useSelector((state) => state.catalog.loading);
+  const catalogError = useSelector((state) => state.catalog.error);
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => ({
     ...DEFAULT_FILTERS,
@@ -47,16 +44,6 @@ function Catalog() {
     maxPrice: searchParams.get('maxPrice') || '',
     sortBy: searchParams.get('sort') || 'default'
   }), [searchParams]);
-  const [catalogError, setCatalogError] = useState('');
-  const [catalogOptionsState, setCatalogOptionsState] = useState(() => {
-    const cachedOptions = getCachedCatalogOptions();
-    return {
-      options: cachedOptions || EMPTY_CATALOG_OPTIONS,
-      loading: !cachedOptions
-    };
-  });
-  const { options, loading: optionsLoading } = catalogOptionsState;
-
   const minimum = filters.minPrice === '' ? null : Number(filters.minPrice);
   const maximum = filters.maxPrice === '' ? null : Number(filters.maxPrice);
   const priceError = minimum !== null && maximum !== null && minimum > maximum
@@ -64,28 +51,8 @@ function Catalog() {
     : '';
 
   useEffect(() => {
-    if (!optionsLoading) {
-      return undefined;
-    }
-
-    const controller = new AbortController();
-
-    async function loadOptions() {
-      try {
-        const result = await fetchCatalogOptions({ signal: controller.signal });
-        cacheCatalogOptions(result);
-        setCatalogOptionsState({ options: result, loading: false });
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          setCatalogError('No se pudieron cargar las opciones de filtro.');
-          setCatalogOptionsState((current) => ({ ...current, loading: false }));
-        }
-      }
-    }
-
-    loadOptions();
-    return () => controller.abort();
-  }, [optionsLoading]);
+    dispatch(loadCatalogOptions());
+  }, [dispatch]);
 
   const availableCountries = useMemo(() => {
     const countryNames = new Set(products.map((product) => product.country));
@@ -264,9 +231,7 @@ function Catalog() {
             <ProductGrid
               user={user}
               products={displayedProducts}
-              addToCart={addToCart}
               favorites={favorites}
-              toggleFavorite={toggleFavorite}
               onClearFilters={resetFilters}
             />
           )}

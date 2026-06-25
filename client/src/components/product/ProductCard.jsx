@@ -3,13 +3,17 @@
 // Muestra la imagen, nombre, precio, selector de talle y botón de agregar al carrito.
 // Si el usuario logueado es admin, los controles de compra se ocultan porque no puede comprar.
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useNotification } from '../ui/useNotification';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import LoadingIndicator from '../ui/LoadingIndicator';
 import { applyTeamCrestFallback } from '../../utils/teamCrest';
+import { addToCart } from '../../store/slices/cartSlice';
+import { toggleFavorite } from '../../store/slices/favoritesSlice';
+import { showNotification } from '../../store/slices/notificationsSlice';
 
-function ProductCard({ user, product, addToCart, isFavorite = false, toggleFavorite }) {
-  const { showNotification } = useNotification();
+function ProductCard({ user, product, isFavorite = false }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [addingToCart, setAddingToCart] = useState(false);
   const canUseShoppingFeatures = !user || user.role === 'user';
 
@@ -34,32 +38,48 @@ function ProductCard({ user, product, addToCart, isFavorite = false, toggleFavor
   const handleQuickAdd = async (e) => {
     e.preventDefault();       // evito que el link padre navegue
     e.stopPropagation();      // evito que el evento suba al contenedor
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     if (selectedSizeStock > 0) {
       setAddingToCart(true);
       try {
-        const success = await addToCart(product, 1, selectedSize);
-        if (success) {
-          showNotification({
-            type: 'success',
-            message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
-          });
-        }
+        await dispatch(addToCart({ product, quantity: 1, size: selectedSize })).unwrap();
+        dispatch(showNotification({
+          type: 'success',
+          message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
+        }));
+      } catch (message) {
+        dispatch(showNotification({
+          type: user.role === 'user' ? 'error' : 'warning',
+          message
+        }));
       } finally {
         setAddingToCart(false);
       }
     } else {
-      showNotification({
+      dispatch(showNotification({
         type: 'warning',
         message: `No hay stock disponible para el talle ${selectedSize}.`
-      });
+      }));
     }
   };
 
-  const handleFavoriteClick = (e) => {
+  const handleFavoriteClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (toggleFavorite) {
-      toggleFavorite(product.id);
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    try {
+      await dispatch(toggleFavorite(product.id)).unwrap();
+    } catch (message) {
+      dispatch(showNotification({
+        type: user.role === 'user' ? 'error' : 'warning',
+        message
+      }));
     }
   };
 
@@ -72,7 +92,7 @@ function ProductCard({ user, product, addToCart, isFavorite = false, toggleFavor
     <article className="group bg-white border border-neutral-200/80 rounded-xl overflow-hidden shadow-sm hover:shadow-primary/5 hover:border-neutral-350 transition-all duration-350 flex flex-col h-full relative">
 
       {/* Botón de favoritos (corazón) */}
-      {toggleFavorite && canUseShoppingFeatures && (
+      {canUseShoppingFeatures && (
         <button
           onClick={handleFavoriteClick}
           className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/85 hover:bg-white text-neutral-450 hover:text-red-500 transition-all duration-200 cursor-pointer shadow-sm hover:shadow focus:outline-none backdrop-blur-xs"

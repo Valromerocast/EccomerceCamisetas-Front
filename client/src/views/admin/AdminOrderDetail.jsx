@@ -5,13 +5,13 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useScrollOnMessage } from '../../components/ui/useScrollOnMessage';
 import LoadingIndicator from '../../components/ui/LoadingIndicator';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectEnrichedOrders } from '../../store/selectors';
-import { useShopActions } from '../../store/useShopActions';
+import { updateOrderStatus } from '../../store/slices/ordersSlice';
 
 function AdminOrderDetail() {
+  const dispatch = useDispatch();
   const orders = useSelector(selectEnrichedOrders);
-  const { updateOrderStatus } = useShopActions();
   const { id } = useParams();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [statusError, setStatusError] = useState('');
@@ -48,9 +48,10 @@ function AdminOrderDetail() {
     setUpdatingStatus(true);
     setStatusError('');
 
-    const result = await updateOrderStatus(order.id, newStatus);
-    if (!result.success) {
-      setStatusError(result.message || 'No se pudo actualizar el pedido.');
+    try {
+      await dispatch(updateOrderStatus({ orderId: order.id, newStatus })).unwrap();
+    } catch (message) {
+      setStatusError(message || 'No se pudo actualizar el pedido.');
     }
 
     setUpdatingStatus(false);

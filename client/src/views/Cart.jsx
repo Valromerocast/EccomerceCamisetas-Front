@@ -6,16 +6,45 @@ import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectEnrichedCart } from '../store/selectors';
-import { useShopActions } from '../store/useShopActions';
+import {
+  clearCart,
+  removeFromCart,
+  updateCartQuantity
+} from '../store/slices/cartSlice';
+import { showNotification } from '../store/slices/notificationsSlice';
 
 function Cart() {
+  const dispatch = useDispatch();
   const cart = useSelector(selectEnrichedCart);
   const cartLoading = useSelector((state) => state.cart.loading);
   const cartError = useSelector((state) => state.cart.error);
-  const { updateCartQuantity, removeFromCart, clearCart } = useShopActions();
   useScrollOnMessage(cartError);
+
+  const handleUpdateQuantity = async (cartKey, quantity) => {
+    try {
+      await dispatch(updateCartQuantity({ cartKey, quantity })).unwrap();
+    } catch (message) {
+      dispatch(showNotification({ type: 'error', message }));
+    }
+  };
+
+  const handleRemove = async (cartKey) => {
+    try {
+      await dispatch(removeFromCart(cartKey)).unwrap();
+    } catch (message) {
+      dispatch(showNotification({ type: 'error', message }));
+    }
+  };
+
+  const handleClear = async () => {
+    try {
+      await dispatch(clearCart()).unwrap();
+    } catch (message) {
+      dispatch(showNotification({ type: 'error', message }));
+    }
+  };
 
   // Controlo si el carrito tiene artículos o está vacío para decidir qué renderizar
   const isCartEmpty = cart.length === 0;
@@ -80,8 +109,8 @@ function Cart() {
                     key={item.cartKey}
                     item={item}
                     disabled={cartLoading}
-                    updateCartQuantity={updateCartQuantity}
-                    removeFromCart={removeFromCart}
+                    updateCartQuantity={handleUpdateQuantity}
+                    removeFromCart={handleRemove}
                   />
                 ))}
               </ul>
@@ -91,7 +120,7 @@ function Cart() {
             <div className="flex justify-between items-center px-2">
               {/* Botón para vaciar el carrito completamente */}
               <button
-                onClick={clearCart}
+                onClick={handleClear}
                 disabled={cartLoading}
                 className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
               >
