@@ -63,8 +63,7 @@ const authSlice = createSlice({
     token: null,
     ready: false,
     loading: false,
-    error: '',
-    lastCreatedUser: null
+    error: ''
   },
   reducers: {
     logout(state) {
@@ -114,19 +113,6 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(register.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(createAdminUser.pending, (state) => {
-        state.loading = true;
-        state.error = '';
-        state.lastCreatedUser = null;
-      })
-      .addCase(createAdminUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.lastCreatedUser = action.payload;
-      })
-      .addCase(createAdminUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

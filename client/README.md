@@ -99,6 +99,19 @@ store/
 - Las respuestas `401` eliminan la sesión vencida y limpian los datos privados
   del store.
 
+### Rama `redux-products`
+
+Para dividir el trabajo del grupo, esta rama deja como responsabilidad principal
+los slices de catalogo:
+
+- `productsSlice.js`: carga, alta, edicion, eliminacion y stock de camisetas.
+- `catalogSlice.js`: paises, tipos, generos y talles usados por filtros y
+  formularios.
+
+El resto de slices queda como base funcional para que otros integrantes puedan
+tomarlos y completar/defender su propia parte: autenticacion, carrito,
+favoritos, pedidos y notificaciones.
+
 ## Rutas principales
 
 | Ruta | Vista |

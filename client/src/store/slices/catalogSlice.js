@@ -1,6 +1,9 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { fetchCatalogOptions } from '../../services/api';
 
+// Rama redux-products:
+// este slice acompaña a productsSlice con las opciones del catálogo
+// usadas para filtros y formularios de administración.
 const CATALOG_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export const loadCatalogOptions = createAsyncThunk(

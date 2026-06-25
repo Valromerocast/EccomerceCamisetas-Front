@@ -8,6 +8,9 @@ import {
 } from '../../services/api';
 import { placeOrder, updateOrderStatus } from './ordersSlice';
 
+// Rama redux-products:
+// este slice concentra la responsabilidad principal de productos/camisetas.
+// Flujo defendible en el oral: componente -> dispatch -> thunk -> API -> reducer -> store.
 const PRODUCTS_MAX_AGE_MS = 30 * 60 * 1000;
 
 export const loadProducts = createAsyncThunk(
