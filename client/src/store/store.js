@@ -9,7 +9,7 @@ import {
   persistReducer,
   persistStore
 } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import storageModule from 'redux-persist/lib/storage/index.js';
 import { setAuthTokenProvider } from '../services/api';
 import authReducer from './slices/authSlice';
 import productsReducer from './slices/productsSlice';
@@ -18,6 +18,8 @@ import favoritesReducer from './slices/favoritesSlice';
 import ordersReducer from './slices/ordersSlice';
 import catalogReducer from './slices/catalogSlice';
 import notificationsReducer from './slices/notificationsSlice';
+
+const storage = storageModule.default || storageModule;
 
 const authPersistConfig = {
   key: 'auth',
