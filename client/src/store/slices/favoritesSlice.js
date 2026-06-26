@@ -16,11 +16,11 @@ export const toggleFavorite = createAsyncThunk('favorites/toggle', async (produc
   if (!user) return rejectWithValue('Debes iniciar sesión para guardar favoritos.');
   if (user.role !== 'user') return rejectWithValue('Esta cuenta no puede guardar favoritos.');
   const id = Number(productId);
-  const wasFavorite = getState().favorites.items.includes(id);
+  const shouldBeFavorite = getState().favorites.items.includes(id);
   try {
-    if (wasFavorite) await deleteFavorite(id);
-    else await addFavorite(id);
-    return { id, wasFavorite };
+    if (shouldBeFavorite) await addFavorite(id);
+    else await deleteFavorite(id);
+    return { id, shouldBeFavorite };
   } catch (error) {
     return rejectWithValue(error?.message || 'No se pudo actualizar el favorito.');
   }

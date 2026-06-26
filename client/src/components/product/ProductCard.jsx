@@ -4,16 +4,18 @@
 // Si el usuario logueado es admin, los controles de compra se ocultan porque no puede comprar.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import LoadingIndicator from '../ui/LoadingIndicator';
 import { applyTeamCrestFallback } from '../../utils/teamCrest';
 import { addToCart } from '../../store/slices/cartSlice';
 import { toggleFavorite } from '../../store/slices/favoritesSlice';
 import { showNotification } from '../../store/slices/notificationsSlice';
+import { selectCart } from '../../store/selectors';
 
 function ProductCard({ user, product, isFavorite = false }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const cartItems = useSelector(selectCart);
   const [addingToCart, setAddingToCart] = useState(false);
   const canUseShoppingFeatures = !user || user.role === 'user';
 
@@ -33,36 +35,39 @@ function ProductCard({ user, product, isFavorite = false }) {
     ? Object.values(product.stock).reduce((sum, qty) => sum + (parseInt(qty, 10) || 0), 0)
     : parseInt(product.stock, 10) || 0;
   const selectedSizeStock = getSizeStock(selectedSize);
+  const selectedVariant = product.variants?.find((variant) => variant.talle === selectedSize);
+  const inCartQty = selectedVariant
+    ? cartItems
+      .filter((item) => item.variantId === selectedVariant.id)
+      .reduce((sum, item) => sum + item.quantity, 0)
+    : 0;
+  const remainingStock = Math.max(0, selectedSizeStock - inCartQty);
+  const canAddToCart = remainingStock > 0;
 
   // Agrega 1 unidad del producto con el talle seleccionado
   const handleQuickAdd = async (e) => {
-    e.preventDefault();       // evito que el link padre navegue
-    e.stopPropagation();      // evito que el evento suba al contenedor
+    e.preventDefault();
+    e.stopPropagation();
     if (!user) {
       navigate('/login');
       return;
     }
-    if (selectedSizeStock > 0) {
-      setAddingToCart(true);
-      try {
-        await dispatch(addToCart({ product, quantity: 1, size: selectedSize })).unwrap();
-        dispatch(showNotification({
-          type: 'success',
-          message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
-        }));
-      } catch (message) {
-        dispatch(showNotification({
-          type: user.role === 'user' ? 'error' : 'warning',
-          message
-        }));
-      } finally {
-        setAddingToCart(false);
-      }
-    } else {
+    if (!canAddToCart || addingToCart) return;
+
+    setAddingToCart(true);
+    try {
+      await dispatch(addToCart({ product, quantity: 1, size: selectedSize })).unwrap();
       dispatch(showNotification({
-        type: 'warning',
-        message: `No hay stock disponible para el talle ${selectedSize}.`
+        type: 'success',
+        message: `¡"${product.name}" (${selectedSize}) agregada al carrito!`
       }));
+    } catch (message) {
+      dispatch(showNotification({
+        type: user.role === 'user' ? 'error' : 'warning',
+        message
+      }));
+    } finally {
+      setAddingToCart(false);
     }
   };
 
@@ -203,21 +208,24 @@ function ProductCard({ user, product, isFavorite = false }) {
 
         {canUseShoppingFeatures && totalStock > 0 && (
           <p className="text-[10px] text-neutral-500 mt-2 font-semibold">
-            {selectedSizeStock} disponibles en talle {selectedSize}
+            {remainingStock} disponibles en talle {selectedSize}
           </p>
         )}
 
         {/* Botón de compra rápida — también oculto para el admin */}
         {canUseShoppingFeatures && (
           <button
+            type="button"
             onClick={handleQuickAdd}
-            disabled={selectedSizeStock === 0 || addingToCart}
-            className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 mt-5 cursor-pointer ${selectedSizeStock === 0
-                ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none'
-                : 'bg-[#325B42] hover:bg-[#284935] text-white hover:shadow-md'
+            aria-busy={addingToCart}
+            className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 mt-5 ${!canAddToCart
+                ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none pointer-events-none'
+                : addingToCart
+                  ? 'bg-[#325B42] text-white opacity-80 pointer-events-none cursor-pointer'
+                  : 'bg-[#325B42] hover:bg-[#284935] text-white hover:shadow-md cursor-pointer'
               }`}
           >
-            {selectedSizeStock === 0
+            {!canAddToCart
               ? 'Sin stock'
               : addingToCart
                 ? <LoadingIndicator label="Agregando..." compact />

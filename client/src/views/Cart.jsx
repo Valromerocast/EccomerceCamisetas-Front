@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
-import LoadingIndicator from '../components/ui/LoadingIndicator';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectEnrichedCart } from '../store/selectors';
 import {
@@ -18,7 +17,6 @@ import { showNotification } from '../store/slices/notificationsSlice';
 function Cart() {
   const dispatch = useDispatch();
   const cart = useSelector(selectEnrichedCart);
-  const cartLoading = useSelector((state) => state.cart.loading);
   const cartError = useSelector((state) => state.cart.error);
   useScrollOnMessage(cartError);
 
@@ -67,12 +65,6 @@ function Cart() {
         </div>
       )}
 
-      {cartLoading && (
-        <p className="text-xs font-semibold text-neutral-500">
-          <LoadingIndicator label="Actualizando carrito..." compact />
-        </p>
-      )}
-
       {isCartEmpty ? (
         /* Estado vacío: le doy una razón al usuario para ir al catálogo */
         <section className="text-center py-20 bg-white border border-neutral-200/85 rounded-2xl p-6 max-w-2xl mx-auto space-y-5 flex flex-col items-center shadow-sm">
@@ -108,7 +100,6 @@ function Cart() {
                   <CartItem
                     key={item.cartKey}
                     item={item}
-                    disabled={cartLoading}
                     updateCartQuantity={handleUpdateQuantity}
                     removeFromCart={handleRemove}
                   />
@@ -120,9 +111,9 @@ function Cart() {
             <div className="flex justify-between items-center px-2">
               {/* Botón para vaciar el carrito completamente */}
               <button
+                type="button"
                 onClick={handleClear}
-                disabled={cartLoading}
-                className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+                className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer flex items-center space-x-1.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

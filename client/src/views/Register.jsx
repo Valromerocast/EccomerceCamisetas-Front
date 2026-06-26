@@ -6,6 +6,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '../components/ui/Form';
 import { useScrollOnMessage } from '../components/ui/useScrollOnMessage';
+import LegalModal from '../components/ui/LegalModal';
+import TermsContent from '../components/legal/TermsContent';
+import PrivacyContent from '../components/legal/PrivacyContent';
 import { useDispatch } from 'react-redux';
 import { register } from '../store/slices/authSlice';
 import { loadCart } from '../store/slices/cartSlice';
@@ -27,7 +30,14 @@ function Register() {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [legalModal, setLegalModal] = useState(null);
   useScrollOnMessage(error);
+
+  const openLegalModal = (event, type) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setLegalModal(type);
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -209,7 +219,23 @@ function Register() {
                 className="mt-0.5 rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4"
               />
               <label htmlFor="acceptTerms" className="text-xs text-neutral-500 select-none cursor-pointer leading-tight">
-                Acepto los Términos de Servicio y la Política de Privacidad de Mundialista Store.
+                Acepto los{' '}
+                <button
+                  type="button"
+                  onClick={(event) => openLegalModal(event, 'terms')}
+                  className="font-bold text-primary hover:underline"
+                >
+                  Términos de Servicio
+                </button>
+                {' '}y la{' '}
+                <button
+                  type="button"
+                  onClick={(event) => openLegalModal(event, 'privacy')}
+                  className="font-bold text-primary hover:underline"
+                >
+                  Política de Privacidad
+                </button>
+                {' '}de Mundialista Store.
               </label>
             </div>
 
@@ -228,6 +254,22 @@ function Register() {
           </div>
         </div>
       </div>
+
+      <LegalModal
+        open={legalModal === 'terms'}
+        title="Términos y Condiciones"
+        onClose={() => setLegalModal(null)}
+      >
+        <TermsContent compact />
+      </LegalModal>
+
+      <LegalModal
+        open={legalModal === 'privacy'}
+        title="Política de Privacidad"
+        onClose={() => setLegalModal(null)}
+      >
+        <PrivacyContent />
+      </LegalModal>
     </main>
   );
 }

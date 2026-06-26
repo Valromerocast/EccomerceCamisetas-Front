@@ -104,7 +104,7 @@ function ProductDetail() {
 
   // Agrego el producto al carrito con la talla y cantidad seleccionados
   const handleAddToCart = async () => {
-    if (currentSizeStock === 0) return;  // no hago nada si está agotado
+    if (currentSizeStock === 0 || addingToCart) return;
     if (!user) {
       navigate('/login');
       return;
@@ -308,11 +308,14 @@ function ProductDetail() {
                 {/* Botón principal de agregar al carrito */}
                 <div className="flex-grow">
                   <button
+                    type="button"
                     onClick={handleAddToCart}
-                    disabled={currentSizeStock === 0 || addingToCart}
+                    aria-busy={addingToCart}
                     className={`w-full text-center font-bold text-xs uppercase tracking-wider py-3.5 px-6 rounded-lg shadow-md transition-all duration-200 cursor-pointer ${currentSizeStock === 0
                         ? 'bg-neutral-100 border border-neutral-200 text-neutral-400 cursor-not-allowed shadow-none'
-                        : 'bg-primary hover:bg-primary/95 text-white shadow-primary/10 hover:shadow-primary/20'
+                        : addingToCart
+                          ? 'bg-primary text-white opacity-80 pointer-events-none shadow-primary/10'
+                          : 'bg-primary hover:bg-primary/95 text-white shadow-primary/10 hover:shadow-primary/20'
                       }`}
                   >
                     {currentSizeStock === 0
